@@ -1,0 +1,35 @@
+name: Primazactl pr checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build artifacts
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+            go-version: "^1.19"
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+            python-version: "3.10"
+            architecture: "x64"
+
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Lint python
+        run: make lint
+
+      - name: run test
+        run: make test
+
+      - name: clean up
+        if: always()
+        run: make clean
