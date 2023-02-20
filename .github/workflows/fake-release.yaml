@@ -1,15 +1,15 @@
-name: Create test release
+name: Create fake release
 on:
   workflow_dispatch:
     inputs:
-       version:
-        description: "create a test version for primazctl use"
+      version:
+        description: "create a fake version for primazctl testing"
         required: true
         default: "latest"
 
 jobs:
-  create_release:
-    name: Create release
+  create_fake_release:
+    name: Create fake release
     runs-on: ubuntu-20.04
     env:
       PRIMAZA_CONFIG_FILE: primaza_config_${{ github.event.inputs.version }}.yaml

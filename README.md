@@ -30,14 +30,14 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -f PRIMAZA_CONFIG, --config PRIMAZA_CONFIG
-                        primaza config file. Takes precedence over --version
   -c CLUSTER_NAME, --clustername CLUSTER_NAME
                         name of cluster, as it appears in kubeconfig, on which to install primaza or worker, default:
                         current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
                         path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise
                         <home directory>/.kube/config
+  -f PRIMAZA_CONFIG, --config PRIMAZA_CONFIG
+                        primaza config file. Takes precedence over --version                 
   -v PRIMAZA_VERSION, --version PRIMAZA_VERSION
                         Version of primaza to use, default: newest release available. Ignored if --config is set.
 ```
@@ -138,16 +138,3 @@ options:
       - image is set by default to ```quay.io/mmulholla/primaza-main-controllers:latest```
         - set the environment variable ```IMG``` overwrite the image used.
         - to push to ```quay.io``` you will need to run ```docker login quay.io```
-
-
-
-
-  
-
-  
-
-
-
-
-
-

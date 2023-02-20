@@ -10,7 +10,7 @@ sys.path.append('./scripts/src/')
 def main():
 
     parser = argparse.ArgumentParser(
-        prog='primaza',
+        prog='primazactl',
         description='Configure and install primaza and primaza worker \
                     on clusters',
         epilog="Brought to you by the RedHat app-services team.")
@@ -20,10 +20,6 @@ def main():
     parser.add_argument('install_type', type=str,
                         choices=["main", "worker"],
                         help='specify primaza or worker.')
-    parser.add_argument("-f", "--config",
-                        dest="primaza_config", type=str, required=False,
-                        help="primaza config file. Takes precedence \
-                        over --version")
     parser.add_argument("-c", "--clustername",
                         dest="cluster_name", type=str, required=False,
                         help="name of cluster, as it appears in kubeconfig, \
@@ -34,6 +30,10 @@ def main():
                         help=f"path to kubeconfig file, default: KUBECONFIG \
                                environment variable if set, otherwise \
                                {(os.path.join(Path.home(),'.kube','config'))}")
+    parser.add_argument("-f", "--config",
+                        dest="primaza_config", type=str, required=False,
+                        help="primaza config file. Takes precedence \
+                        over --version")
     parser.add_argument("-v", "--version",
                         dest="primaza_version", type=str, required=False,
                         help="Version of primaza to use, default: newest \
