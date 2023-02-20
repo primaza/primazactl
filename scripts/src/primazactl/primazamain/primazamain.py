@@ -1,9 +1,7 @@
 import tempfile
-import sys
 from primazactl.utils import command
 from primazactl.utils import kubeconfigwrapper
 from primazactl.utils import primazaconfig
-sys.path.append('./scripts/src')
 
 
 class PrimazaMain(object):

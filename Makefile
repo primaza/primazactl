@@ -48,7 +48,12 @@ endif
 
 
 ## Location to install dependencies to
-LOCALBIN ?= $(PROJECT_DIR)/scripts/bin
+
+OUTPUT_DIR ?= $(PROJECT_DIR)/out
+$(OUTPUT_DIR):
+	mkdir -p $(OUTPUT_DIR)
+
+LOCALBIN ?= $(OUTPUT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
@@ -58,15 +63,12 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.0
 
-OUTPUT_DIR ?= $(PROJECT_DIR)/out
-$(OUTPUT_DIR):
-	mkdir -p $(OUTPUT_DIR)
 PYTHON_VENV_DIR ?= $(OUTPUT_DIR)/venv3
 HACK_DIR ?= $(PROJECT_DIR)/hack
 SCRIPTS_DIR = $(PROJECT_DIR)/scripts
-TEMP_DIR = $(PROJECT_DIR)/temp
+TEMP_DIR = $(OUTPUT_DIR)/temp
 
-PRIMAZA_CONFIG_DIR ?= $(SCRIPTS_DIR)/config
+PRIMAZA_CONFIG_DIR ?= $(OUTPUT_DIR)/config
 $(PRIMAZA_CONFIG_DIR):
 	mkdir -p $(PRIMAZA_CONFIG_DIR)
 
@@ -89,21 +91,11 @@ config: clone kustomize $(PRIMAZA_CONFIG_DIR) ## Get config files from primaza r
 	cd $(TEMP_DIR)/config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/default > $(PRIMAZA_CONFIG_FILE)
 
-.PHONY: primaza-main-controllers
-primaza-main-controllers: clone
-	cd temp && export IMG=$(IMG) && make primaza docker-build
-	cd temp && export IMG=$(IMG) && make primaza docker-push
-
-ifeq ($(shell sh -c 'uname 2>/dev/null || echo Unknown'),Darwin)
-SED_EXTRA := .bak
-endif
 
 .PHONY: kind-cluster
-kind-cluster: $(SED-EXTRA)
+kind-cluster:
 	-kind delete cluster --name $(KIND_CLUSTER_NAME)
-	##kind create cluster --name $(KIND_CLUSTER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
-	sed -i $(SED_EXTRA) 's/name:.*/name: $(KIND_CLUSTER_NAME)/g' $(KIND_CONFIG_FILE)
-	kind create cluster --config $(KIND_CONFIG_FILE) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	kind create cluster --config $(KIND_CONFIG_FILE) --name $(KIND_CLUSTER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 
 .PHONY: setup-test
 setup-test: clean kind-cluster primazactl config

@@ -11,7 +11,8 @@
  - [Other useful make targets](#other-useful-make-targets)
 
 # Introduction
-```primazactl``` is a simple Command Line Application for Primaza Administrators.
+
+`primazactl` is a simple Command Line Application for Primaza Administrators.
 
 The first implementation includes primaza main install only and more functions will be added over time.
 
@@ -46,9 +47,9 @@ options:
  
 1. Clone this repository
 1. Run: `make primazactl`
-1. Tool will be available in ```out/venv3/bin/primazactl```
+1. Tool will be available in `out/venv3/bin/primazactl`
 1. For example, from repository root directory:
-  - ```out/venv3/bin/primazactl install main -f primaza-config.yaml```
+  - `out/venv3/bin/primazactl install main -f primaza-config.yaml`
 
 # Running the tool
 
@@ -59,9 +60,9 @@ options:
 - a cluster available for primaza to be installed.
   - for a kind cluster run `make kind-cluster`.
     - default cluster name is primazactl-test.
-      - set environment variable ```KIND_CLUSTER_NAME``` to overwrite.
-    - the configuration file used when creating the cluster is ```scripts/src/primazatest/config/kind.yaml```. 
-      - set environment variable ```KIND_CONFIG_FILE``` to overwrite.
+      - set environment variable `KIND_CLUSTER_NAME` to overwrite.
+    - the configuration file used when creating the cluster is `scripts/src/primazatest/config/kind.yaml`. 
+      - set environment variable `KIND_CONFIG_FILE` to overwrite.
     - For information on kind see : (kind quick start)[https://kind.sigs.k8s.io/docs/user/quick-start/].
   
 ## Command options:
@@ -78,23 +79,23 @@ options:
 
 ### Flags
 - All flags are optional.
-- ```-f```, ```--config--```
+- `-f`, `--config`
   - a single file with the configuration information for primaza main install.
   - to create one based on the main branch of the primaza repository:
-    - ```make config```
-      - config file is written to ```scripts/config/primaza_config_latest.yaml```
-      - default image is: ```quay.io/mmulholl/primaza-main-controllers:latest```
-        - set the environment variable ```IMG``` to overwrite the image used.
-- ```-c```, ```--clustername--``` 
+    - `make config`
+      - config file is written to `scripts/config/primaza_config_latest.yaml`
+      - default image is: `quay.io/mmulholl/primaza-main-controllers:latest`
+        - set the environment variable `IMG` to overwrite the image used.
+- `-c`, `--clustername` 
   - name of cluster on which to install primaza.
   - will default to the cluster which is the current context of kubeconfig.
-  - note if using kind, prepend ```kind-``` to the cluster name as provided to kind.
-    - for example for ```kind create cluster primaza-test``` the cluster specified to primazactl is ```kind-primaza-cluster```.
-- ```-k```, ```--kubeconfig``` 
+  - note if using kind, prepend `kind-` to the cluster name as provided to kind.
+    - for example for `kind create cluster primaza-test` the cluster specified to primazactl is `kind-primaza-cluster`.
+- `-k`, `--kubeconfig` 
   - path of kubeconfig file to use.
-    - first default is ```KUBECONFIG``` environment variable.
-    - second default is ```<HOME>/.kube/config```
-- ```-v``` , ```--version```
+    - first default is `KUBECONFIG` environment variable.
+    - second default is `<HOME>/.kube/config`
+- `-v` , `--version`
     - the version of the image to install.
     - must be a semantic version.  
     - will be an alternative to the config file when supported.
@@ -104,37 +105,37 @@ options:
   
 # Testing
 
-- To run the tests run ```make test```
+- To run the tests run `make test`
   - This will combine:
-      - ```make clean```
-      - ```kind-cluster```
+      - `make clean`
+      - `kind-cluster`
         - Create a kind cluster 
         - default cluster name is primazactl-test
-          - set environment variable ```KIND_CLUSTER_NAME``` to overwrite.
-        - the configuration file used when creating the cluster is ```scripts/src/primazatest/config/kind.yaml```.
-          - set environment variable ```KIND_CONFIG_FILE``` to overwrite.
-      - ```make primazactl```
+          - set environment variable `KIND_CLUSTER_NAME` to overwrite.
+        - the configuration file used when creating the cluster is `scripts/src/primazatest/config/kind.yaml`.
+          - set environment variable `KIND_CONFIG_FILE` to overwrite.
+      - `make primazactl`
         - creates a python virtual environment from which primazactl can be invoked.
-        - default directory is ```out/venv1```
-          - set environment variable ```PYTHON_VENV_DIR``` to overwrite.
-      - ```make config```
+        - default directory is `out/venv1`
+          - set environment variable `PYTHON_VENV_DIR` to overwrite.
+      - `make config`
         - Creates a primaza configuration file.
           - clones the primaza repository.
-          - uses kustomize to create a single config file from ```config/default```
-          - image is set by default to ```quay.io/mmulholla/primaza-main-controllers:latest```
-            - set the environment variable ```IMG``` overwrite the image used.
-      - runs the test:  ```out/venv3/bin/primazatest```
-        - src script is ```scripts/src/promazatest/runtest.sh```
+          - uses kustomize to create a single config file from `config/default`
+          - image is set by default to `quay.io/mmulholla/primaza-main-controllers:latest`
+            - set the environment variable `IMG` overwrite the image used.
+      - runs the test:  `out/venv3/bin/primazatest`
+        - src script is `scripts/src/promazatest/runtest.sh`
           - requires inputs: python virtual environment directory, the primaza configuration file and the cluster name.
         
 # Other useful make targets:
 
-  - ```lint```
+  - `lint`
     - run lint on the python files.
-  - ```primaza-main-controllers```
+  - `primaza-main-controllers`
     - clones the primaza repository and runs 
       - make primaza docker-build
       - make primaza docker-push
-      - image is set by default to ```quay.io/mmulholla/primaza-main-controllers:latest```
-        - set the environment variable ```IMG``` overwrite the image used.
-        - to push to ```quay.io``` you will need to run ```docker login quay.io```
+      - image is set by default to `quay.io/mmulholla/primaza-main-controllers:latest`
+        - set the environment variable `IMG` overwrite the image used.
+        - to push to `quay.io` you will need to run `docker login quay.io`
