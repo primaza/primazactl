@@ -1,10 +1,8 @@
 import argparse
 import os
 import semver
-import sys
 from pathlib import Path
 from primazactl.primazamain import primazamain
-sys.path.append('./scripts/src/')
 
 
 def main():
