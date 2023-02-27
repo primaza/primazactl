@@ -17,7 +17,13 @@ eggs/
 lib/
 lib64/
 parts/
+scripts/bin/
+scripts/config/
+out/
+*.docker
+*.kube
 sdist/
+temp/
 var/
 wheels/
 share/python-wheels/
