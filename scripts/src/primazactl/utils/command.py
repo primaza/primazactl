@@ -1,6 +1,7 @@
 import subprocess
 import time
 import os
+from primazactl.utils import logger
 
 
 class Command(object):
@@ -26,10 +27,9 @@ class Command(object):
 
     def run(self, cmd, stdin=None):
         # for debugging purposes
-        print(f",---------,-\n| COMMAND : {cmd}\n'---------'-")
+        logger.log_entry(f"COMMAND : {cmd}\n")
         if stdin is not None:
-            print(f"With stdin: [\n{stdin}\n]\n")
-        output = None
+            logger.log_entry("get input from stdin")
         exit_code = 0
         try:
             if stdin is None:
@@ -44,8 +44,8 @@ class Command(object):
         except subprocess.CalledProcessError as err:
             output = err.output
             exit_code = err.returncode
-            print('ERROR MESSGE:', output)
-            print('ERROR CODE:', exit_code)
+            logger.log_error('MESSAGE:', output)
+            logger.log_error('ERROR CODE:', exit_code)
         return output.decode("utf-8"), exit_code
 
     def run_wait_for_status(self, cmd, status, interval=20, timeout=180):
@@ -58,5 +58,5 @@ class Command(object):
                 return True, cmd_output, exit_code
             time.sleep(interval)
             start += interval
-        print("ERROR: Time out while waiting for status message.")
+        logger.log_error("Time out while waiting for status message.")
         return False, cmd_output, exit_code

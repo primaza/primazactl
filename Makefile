@@ -73,11 +73,18 @@ $(PRIMAZA_CONFIG_DIR):
 	mkdir -p $(PRIMAZA_CONFIG_DIR)
 
 PRIMAZA_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/primaza_config_latest.yaml
+WORKER_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/worker_config_latest.yaml
 
 KIND_CONFIG_DIR ?= $(SCRIPTS_DIR)/src/primazatest/config
 KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind.yaml
-KIND_CLUSTER_NAME ?= primazactl-test
-KUBE_KIND_CLUSTER_NAME ?= kind-$(KIND_CLUSTER_NAME)
+KIND_CLUSTER_MAIN_NAME ?= primazactl-main-test
+KUBE_KIND_CLUSTER_MAIN_NAME ?= kind-$(KIND_CLUSTER_MAIN_NAME)
+KIND_CLUSTER_WORKER_NAME ?= primazactl-worker-test
+KUBE_KIND_CLUSTER_WORKER_NAME ?= kind-$(KIND_CLUSTER_WORKER_NAME)
+
+KEY_FILE_NAME ?= primaza_private.key
+KEY_FILE_DIR ?= $(OUTPUT_DIR)/keys
+KEY_FILE =  $(KEY_FILE_DIR)/$(KEY_FILE_NAME)
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -90,15 +97,19 @@ config: clone kustomize $(PRIMAZA_CONFIG_DIR) ## Get config files from primaza r
 	-rm $(PRIMAZA_CONFIG_FILE)
 	cd $(TEMP_DIR)/config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/default > $(PRIMAZA_CONFIG_FILE)
+	$(KUSTOMIZE) build $(TEMP_DIR)/config/crd > $(WORKER_CONFIG_FILE)
 
 
 .PHONY: kind-cluster
 kind-cluster:
-	-kind delete cluster --name $(KIND_CLUSTER_NAME)
-	kind create cluster --config $(KIND_CONFIG_FILE) --name $(KIND_CLUSTER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
+	kind create cluster --config $(KIND_CONFIG_FILE) --name $(KIND_CLUSTER_MAIN_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
+	kind create cluster --config $(KIND_CONFIG_FILE) --name $(KIND_CLUSTER_WORKER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 
 .PHONY: setup-test
-setup-test: clean kind-cluster primazactl config
+setup-test: clean kind-cluster primazactl config create-key
+
 
 .PHONY: clone
 clone: clean-temp
@@ -118,9 +129,14 @@ primazactl: ## Setup virtual environment
 lint: primazactl ## Check python code
 	PYTHON_VENV_DIR=$(PYTHON_VENV_DIR) $(HACK_DIR)/check-python/lint-python-code.sh
 
+.PHONY: create-key
+create-key: primazactl
+	-rm $(KEY_FILE)
+	$(PYTHON_VENV_DIR)/bin/rsakey $(KEY_FILE)
+
 .PHONY: test
 test: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -v $(PYTHON_VENV_DIR) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_NAME)
+	$(PYTHON_VENV_DIR)/bin/primazatest -v $(PYTHON_VENV_DIR) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_MAIN_NAME)
 
 .PHONY: clean-temp
 clean-temp:
@@ -131,5 +147,5 @@ clean-temp:
 clean: clean-temp
 	rm -rf $(OUTPUT_DIR)
 	rm -rf $(LOCALBIN)
-	rm -rf $(PRIMAZA_CONFIG_DIR)
-	-kind delete cluster --name $(KIND_CLUSTER_NAME)
+	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
+	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
