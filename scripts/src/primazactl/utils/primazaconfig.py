@@ -75,27 +75,35 @@ class PrimazaConfig(object):
     def apply(self, kcw: kubeconfigwrapper.KubeConfigWrapper):
 
         logger.log_entry()
+        kc_content = kcw.get_kube_config_content()
         with tempfile.NamedTemporaryFile(
             prefix=f"kubeconfig-primaza-{kcw.get_cluster_name()}-") as temp_file:
 
-            #kcw = kcw.copy_to_temp_file(temp_file)
+            temp_file.write(kc_content.encode("utf-8"))
+            return self.__deploy(temp_file.name,kcw.get_cluster_name())
+
+    def __deploy(self,kubeconfig_path: str, cluster_name: str):
 
             # make sure we deploy to the required cluster
-            kcw.use_context()
+            temp_kcw = kubeconfigwrapper.KubeConfigWrapper(cluster_name,kubeconfig_path)
+            temp_kcw.use_context()
 
-            logger.log_info(f"Using context: {kcw.get_context()}")
-            logger.log_info(f"Using kubeconfig: {kcw.get_kube_config_file()}")
+            logger.log_info(f"Using context: {temp_kcw.get_context()}")
+            logger.log_info(f"Using kubeconfig: {temp_kcw.get_kube_config_file()}")
 
             if self.config_file:
                 out, err = command.Command(). \
-                    setenv("KUBECONFIG", kcw.get_kube_config_file()). \
+                    setenv("KUBECONFIG", kubeconfig_path). \
                     run(f"kubectl apply -f {self.config_file}")
+                logger.log_exit(out)
+                return err
             else:
                 if not self.config_content:
                     self.__set_config_content()
+
                 out, err = command.Command(). \
-                    setenv("KUBECONFIG", kcw.get_kube_config_file()). \
+                    setenv("KUBECONFIG", kubeconfig_path). \
                     run("kubectl apply -f -", self.config_content)
 
-        logger.log_exit(out)
-        return err
+                logger.log_exit(out)
+                return err

@@ -87,13 +87,15 @@ def test_args(venv_dir):
                                       expect_error_msg, fail_msg)
 
     args = ["install", "main", "-k", "/.kube/DoesNotExist"]
-    expect_error_msg = "[ERROR] --kubeconfig does not specify a valid file"
+    expect_error_msg = "[Errno 2] No such file or " \
+                       "directory: \'/.kube/DoesNotExist\'"
     fail_msg = "unexpected response to bad kube config file"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
     args = ["install", "main", "-f", "scripts/config/DoesNotExist"]
-    expect_error_msg = "[ERROR] --config does not specify a valid file"
+    expect_error_msg = "[Errno 2] No such file or " \
+                       "directory: \'scripts/config/DoesNotExist\'"
     fail_msg = "unexpected response to bad config file"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)

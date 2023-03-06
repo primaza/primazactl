@@ -77,9 +77,9 @@ WORKER_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/worker_config_latest.yaml
 
 KIND_CONFIG_DIR ?= $(SCRIPTS_DIR)/src/primazatest/config
 KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind.yaml
-KIND_CLUSTER_MAIN_NAME ?= primazactl-main-test
+KIND_CLUSTER_MAIN_NAME ?= primazamain-test
 KUBE_KIND_CLUSTER_MAIN_NAME ?= kind-$(KIND_CLUSTER_MAIN_NAME)
-KIND_CLUSTER_WORKER_NAME ?= primazactl-worker-test
+KIND_CLUSTER_WORKER_NAME ?= primazaworker-test
 KUBE_KIND_CLUSTER_WORKER_NAME ?= kind-$(KIND_CLUSTER_WORKER_NAME)
 
 KEY_FILE_NAME ?= primaza_private.key
