@@ -83,6 +83,8 @@ class PrimazaConfig(object):
         # make sure we deploy to the required cluster
         kcw.use_context()
 
+        logger.log_info(f"kubeconfig \n {kcw.get_kube_config_content}")
+
         if self.config_file:
             out, err = command.Command(). \
                 setenv("KUBECONFIG", kcw.get_kube_config_file()). \

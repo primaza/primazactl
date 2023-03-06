@@ -7,7 +7,6 @@ from primazactl.utils import logger
 class KubeConfigWrapper(object):
 
     kube_config_file: str = None
-    temp_kube_config_file: str = None
     kube_config_content = None
     cluster_name: str = None
     cluster_only_api_client: client.ApiClient = None
@@ -19,7 +18,8 @@ class KubeConfigWrapper(object):
             logger.log_info(f"kcw: Use context cluster: {self.cluster_name}")
         else:
             self.cluster_name = cluster_name
-            logger.log_info(f"kcw: Use given cluster: {self.cluster_name}")
+        logger.log_info(f"kcw: cluster: {self.cluster_name}, "
+                        f"file: {self.kube_config_file}")
 
     def get_server_url(self):
         kube_config_content = self.__get_kube_config_content_as_yaml()
