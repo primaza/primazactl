@@ -28,7 +28,8 @@ class PrimazaMain(object):
         self.cluster_name = cluster_name
         kcw = kubeconfigwrapper.KubeConfigWrapper(cluster_name,
                                                   kubeconfigfile)
-        self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
+        #self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
+        self.kube_config_wrapper = kcw
         self.primaza_config = config_file
         self.primaza_version = version
         if namespace:

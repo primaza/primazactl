@@ -44,8 +44,8 @@ class Command(object):
         except subprocess.CalledProcessError as err:
             output = err.output
             exit_code = err.returncode
-            logger.log_error('MESSAGE:', output)
-            logger.log_error('ERROR CODE:', exit_code)
+            logger.log_error(f'MESSAGE: {output}')
+            logger.log_error(f'ERROR CODE: {exit_code}')
         return output.decode("utf-8"), exit_code
 
     def run_wait_for_status(self, cmd, status, interval=20, timeout=180):

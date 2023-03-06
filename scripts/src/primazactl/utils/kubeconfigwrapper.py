@@ -65,6 +65,11 @@ class KubeConfigWrapper(object):
                 self.kube_config_content = kc_file.read()
         return self.kube_config_content
 
+    def get_kubeconfig_for_content(self,content):
+        kcw = KubeConfigWrapper(self.cluster_name, None)
+        kcw.kube_config_content = content
+        return kcw
+
     def get_kube_config_for_cluster(self):
         logger.log_entry(f"Cluster: {self.cluster_name}, "
                          f"File : {self.kube_config_file}")

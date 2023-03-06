@@ -105,7 +105,7 @@ kind-cluster:
 	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
 	kind create cluster --config $(KIND_CONFIG_FILE) --name $(KIND_CLUSTER_MAIN_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
-	kind create cluster --config $(KIND_CONFIG_FILE) --name $(KIND_CLUSTER_WORKER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	kind create cluster --name $(KIND_CLUSTER_WORKER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 
 .PHONY: setup-test
 setup-test: clean kind-cluster primazactl config create-key
