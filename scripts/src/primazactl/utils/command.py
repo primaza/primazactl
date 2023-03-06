@@ -23,11 +23,12 @@ class Command(object):
             f"Name or value of the environment variable cannot be None:" \
             f" [{key} = {value}]"
         self.env[key] = value
+        logger.log_info(f"command env set: [{key} = {value}]")
         return self
 
     def run(self, cmd, stdin=None):
         # for debugging purposes
-        logger.log_entry(f"COMMAND : {cmd}\n")
+        logger.log_entry(f"COMMAND : {cmd}")
         if stdin is not None:
             logger.log_entry("get input from stdin")
         exit_code = 0
