@@ -1,6 +1,7 @@
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from primazactl.utils import kubeconfigwrapper
@@ -8,6 +9,10 @@ from primazactl.utils import primazaconfig
 from primazactl.utils import logger
 from kubernetes import client
 from kubernetes.client.rest import ApiException
+import polling2
+from datetime import datetime
+import yaml
+import base64
 
 
 class PrimazaMain(object):
@@ -26,21 +31,26 @@ class PrimazaMain(object):
                  config_file: str, version: str,
                  private_key_file: str, namespace: str):
         self.cluster_name = cluster_name
-        kcw = kubeconfigwrapper.KubeConfigWrapper(cluster_name,
-                                                  kubeconfigfile)
-        #self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
-        self.kube_config_wrapper = kcw
+        kcw = kubeconfigwrapper.KubeConfigWrapper(cluster_name,kubeconfigfile)
+        self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
         self.primaza_config = config_file
         self.primaza_version = version
         if namespace:
             self.primaza_namespace = namespace
         if private_key_file:
             logger.log_info(f"Read the key file : {private_key_file}")
-            with open(private_key_file, "rb") as key_file:
-                self.certificate = serialization.\
-                    load_pem_private_key(key_file.read(), password=None)
+            #with open(private_key_file, "rb") as key_file:
+            #    self.certificate = serialization.\
+            #        load_pem_private_key(key_file.read(), password=None)
+            self.certificate = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+            self.certificate_private_key = self.certificate.private_bytes(
+                format=serialization.PrivateFormat.PKCS8,
+                encoding=serialization.Encoding.PEM,
+                encryption_algorithm=serialization.NoEncryption()).decode("utf-8")
+
         logger.log_info("Primaza main created for cluster "
-                        f"{self.cluster_name}")
+                        f"{self.cluster_name}",
+                        f"server url: {self.kube_config_wrapper.get_server_url()}")
 
     def install_primaza(self):
         logger.log_entry()
@@ -87,10 +97,6 @@ class PrimazaMain(object):
         a worker cluster
         """
         logger.log_entry()
-        self.certificate_private_key = self.certificate.private_bytes(
-            format=serialization.PrivateFormat.PKCS8,
-            encoding=serialization.Encoding.PEM,
-            encryption_algorithm=serialization.NoEncryption()).decode("utf-8")
 
         c = self.__create_certificate_signing_request()
         return c.public_bytes(serialization.Encoding.PEM)
@@ -99,7 +105,7 @@ class PrimazaMain(object):
         """
         Creates the Primaza's ClusterContext secret
         """
-        logger.log_entry()
+        logger.log_entry(f"Secret name: {secret_name}")
 
         api_client = self.kube_config_wrapper.get_api_client()
         corev1 = client.CoreV1Api(api_client)
@@ -120,3 +126,116 @@ class PrimazaMain(object):
         logger.log_info("create_namespaced_secret")
         corev1.create_namespaced_secret(namespace=self.primaza_namespace,
                                         body=secret)
+
+    def write_resource(self, resource):
+        logger.log_entry()
+        resource_config = primazaconfig.PrimazaConfig()
+        resource_config.set_content(resource)
+        resource_config.apply(self.kube_config_wrapper)
+
+    def write_secret(self, secret_name):
+        logger.log_entry(f"secret name: {secret_name}")
+        resource = {"apiVersion": "v1",
+                    "kind": "Secret",
+                    "metadata": {
+                        "name": secret_name,
+                        "namespace": self.primaza_namespace
+                    },
+                    "data": {
+                        "kubeconfig": base64.b64encode(
+                            self.kube_config_wrapper.
+                                get_kube_config_content().
+                                encode('utf8')).decode("utf-8")
+                    }
+                    }
+
+        self.write_resource(yaml.dump(resource))
+
+    def write_cluster_environment(self,
+                                  cluster_environment_name,
+                                  environment_name,
+                                  secret_name):
+
+        logger.log_entry("kind: ClusterEnvironment, "
+                         f"name: {cluster_environment_name}, "
+                         f"environment_name: {environment_name} "
+                         f"secret_name: {secret_name}")
+
+        resource = {"apiVersion": "primaza.io/v1alpha1",
+                    "kind": "ClusterEnvironment",
+                    "metadata": {
+                        "name": cluster_environment_name,
+                        "namespace": self.primaza_namespace
+                    },
+                    "spec": {
+                        "environmentName": environment_name,
+                        "clusterContextSecret": secret_name
+                    }
+                    }
+
+        logger.log_info(f"write cluster environment:\n{yaml.dump(resource)}")
+        self.write_resource(yaml.dump(resource))
+
+
+    def check_state(self, ce_name, state, timeout=60):
+
+        logger.log_entry(f"check state, ce_name: {ce_name}, state:{state}")
+        api_client = self.kube_config_wrapper.get_api_client()
+        cobj = client.CustomObjectsApi(api_client)
+
+        try:
+            polling2.poll(
+                target=lambda: cobj.get_namespaced_custom_object_status(
+                group="primaza.io",
+                version="v1alpha1",
+                namespace="primaza-system",
+                plural="clusterenvironments",
+                name=ce_name).get("status", {}).get("state", None),
+                check_success=lambda x: x is not None and x == state,
+                step=5,
+                timeout=timeout)
+        except polling2.TimeoutException:
+            ce_status = cobj.get_namespaced_custom_object_status(
+                group="primaza.io",
+                version="v1alpha1",
+                namespace="primaza-system",
+                plural="clusterenvironments",
+                name=ce_name)
+            logger.log_error("Timed out waiting for cluster environment "
+                             f"{ce_name}. State was {state}")
+            logger.log_error(f"environment: \n{yaml.dump(ce_status)}")
+            raise RuntimeError("[ERROR] Timed out waiting for cluster environment: "
+                               f"{ce_name} state: {state}")
+
+    def check_status_condition(self, ce_name, ctype):
+        logger.log_entry(f"check state, ce_name: {ce_name}, state:{state}")
+        api_client = self.kube_config_wrapper.get_api_client()
+        cobj = client.CustomObjectsApi(api_client)
+
+        ce_status = cobj.get_namespaced_custom_object_status(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="clusterenvironments",
+            name=ce_name)
+        ce_conditions = ce_status.get("status", {}).get("conditions", None)
+        if ce_conditions is None or len(ce_conditions) == 0:
+            logger.log_error("Cluster Environment status conditions are "
+                            "empty or not defined")
+            raise RuntimeError("[ERROR] checking install: Cluster Environment "
+                               "status conditions are empty or not defined")
+
+        last_applied = ce_conditions[0]
+        for condition in ce_conditions[1:]:
+            lat = datetime.fromisoformat(last_applied["last_transition_time"])
+            cct = datetime.fromisoformat(condition["last_transition_time"])
+            if cct > lat:
+                last_applied = condition
+
+        if last_applied["type"] != ctype:
+            logger.log_error('Cluster Environment last condition type is '
+                            f'not matching: wanted {ctype}, '
+                            f'found {last_applied["type"]}')
+            raise RuntimeError('[ERROR] Cluster Environment last condition type '
+                               f'is not matching: wanted {ctype}, '
+                               f'found {last_applied["type"]}')

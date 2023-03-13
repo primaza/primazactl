@@ -5,9 +5,11 @@ from typing import Dict
 from datetime import datetime, timezone, timedelta
 from kubernetes import client
 from kubernetes.client.rest import ApiException
+from urllib.parse import urlparse
 from primazactl.utils import kubeconfigwrapper
 from primazactl.utils import primazaconfig
 from primazactl.utils import logger
+from primazactl.utils import command
 from primazactl.primazamain import primazamain
 
 
@@ -45,37 +47,36 @@ class PrimazaWorker(object):
         logger.log_info("PrimazaWorker created for cluster "
                         f"{self.cluster_name}")
 
-    def create_primaza_user(self, csr_pem: bytes, timeout: int = 60):
+    def create_primaza_user(self, csr_pem: bytes, csr_name, timeout: int = 60):
 
         logger.log_entry()
         """
         Creates a CertificateSigningRequest for user primaza, approves it,
         and creates the needed roles and role bindings.
         """
-        csr = f"primaza-{self.environment}"
         api_client = self.kube_config_wrapper.get_api_client()
 
         logger.log_info("call CertificatesV1Api")
         certs = client.CertificatesV1Api(api_client)
 
         # Check if CertificateSigningRequest has yet been created and approved
-        logger.log_info(f"Check if CertificateSigningRequest {csr} "
+        logger.log_info(f"Check if CertificateSigningRequest {csr_name} "
                         "has already been created and approved")
         try:
-            s = certs.read_certificate_signing_request_status(name=csr)
+            s = certs.read_certificate_signing_request_status(name=csr_name)
             if s == "Approved":
                 logger.log_info(f"cluster '{self.cluster_name}' already has "
                                 "an approved CertificateSigningRequest "
-                                f"'{csr}'")
+                                f"'{csr_name}'")
                 return
         except ApiException as e:
             if e.reason != "Not Found":
                 raise e
 
         # Create CertificateSigningRequest
-        logger.log_info(f"Create CertificateSigningRequest: {csr}")
+        logger.log_info(f"Create CertificateSigningRequest: {csr_name}")
         v1csr = client.V1CertificateSigningRequest(
-            metadata=client.V1ObjectMeta(name=csr),
+            metadata=client.V1ObjectMeta(name=csr_name),
             spec=client.V1CertificateSigningRequestSpec(
                 signer_name="kubernetes.io/kube-apiserver-client",
                 request=base64.b64encode(csr_pem).decode("utf-8"),
@@ -85,7 +86,7 @@ class PrimazaWorker(object):
 
         # Approve CertificateSigningRequest
         logger.log_info("Approve CertificateSigningRequest")
-        v1csr = certs.read_certificate_signing_request(name=csr)
+        v1csr = certs.read_certificate_signing_request(name=csr_name)
         approval_condition = client.V1CertificateSigningRequestCondition(
             last_update_time=datetime.now(timezone.utc).astimezone(),
             message='This certificate was approved by primazactl',
@@ -94,7 +95,7 @@ class PrimazaWorker(object):
             status='True')
         v1csr.status.conditions = [approval_condition]
         # Approve CertificateSigningRequest
-        certs.replace_certificate_signing_request_approval(name=csr,
+        certs.replace_certificate_signing_request_approval(name=csr_name,
                                                            body=v1csr)
         logger.log_info("Configure primaza user permissions")
         # Configure primaza user permissions
@@ -104,20 +105,20 @@ class PrimazaWorker(object):
         logger.log_info("Wait for certificate emission")
         tend = datetime.now() + timedelta(seconds=timeout)
         while datetime.now() < tend:
-            v1csr = certs.read_certificate_signing_request(name=csr)
+            v1csr = certs.read_certificate_signing_request(name=csr_name)
             status = v1csr.status
             if hasattr(status, 'certificate') \
                     and status.certificate is not None:
-                logger.log_info(f"CertificateSignignRequest '{csr}' "
+                logger.log_info(f"CertificateSignignRequest '{csr_name}' "
                                 f"certificate is ready!")
                 self.certificate = status.certificate
                 return
-            logger.log_info(f"CertificateSignignRequest '{csr}' "
+            logger.log_info(f"CertificateSignignRequest '{csr_name}' "
                             f"certificate is not ready")
             time.sleep(5)
 
         msg = "Timed-out waiting CertificateSignignRequest " \
-              f"'{csr}' certificate to become ready"
+              f"'{csr_name}' certificate to become ready"
         logger.log_error(msg)
         raise RuntimeError(msg)
 
@@ -153,75 +154,47 @@ class PrimazaWorker(object):
             ])
         rbac.create_cluster_role_binding(role_binding)
 
-    def get_csr_kubeconfig(self, certificate_key: str, csr: str) -> Dict:
+    def get_csr_kubeconfig(self, certificate_key: str, csr_name: str) -> Dict:
         """
         Generates the kubeconfig for the CertificateSignignRequest `csr`.
         The key used when creating the CSR is also needed.
         """
-        logger.log_entry()
+        logger.log_entry(f"csr name: {csr_name}")
 
         kcw = self.kube_config_wrapper.get_kube_config_for_cluster()
 
         kcd = kcw.get_kube_config_content_as_yaml()
         key_data = base64.b64encode(certificate_key.encode("utf-8")).\
             decode("utf-8")
-        kcd["contexts"][0]["context"]["user"] = csr
-        kcd["users"][0]["name"] = csr
+        kcd["contexts"][0]["context"]["user"] = csr_name
+        kcd["users"][0]["name"] = csr_name
         kcd["users"][0]["user"]["client-key-data"] = key_data
-        kcd["users"][0]["user"]["client-certificate-data"] = "certificate"
+        kcd["users"][0]["user"]["client-certificate-data"] = self.certificate
+        #if self.cluster_name != self.primaza_main.cluster_name:
+        new_url = self.get_updated_server_url()
+        if new_url:
+            kcd["clusters"][0]["cluster"]["server"] = new_url
+
+        logger.log_info(yaml.dump(kcd))
 
         return str(kcd)
 
-    def write_resource(self, resource):
-        logger.log_entry()
-        resource_config = primazaconfig.PrimazaConfig()
-        resource_config.set_content(resource)
-        resource_config.apply(self.kube_config_wrapper)
+    def get_updated_server_url(self):
 
-    def write_secret(self, cluster_environment_name):
-        logger.log_entry("kind: secret, cluster_environment_name: "
-                         f"{cluster_environment_name}")
-        resource = {"apiVersion": "v1",
-                    "kind": "Secret",
-                    "metadata": {
-                        "name": f"primaza-{cluster_environment_name}"
-                                "-kubeconfig",
-                        "namespace": self.namespace
-                        },
-                    "data": {
-                        "kubeconfig": base64.b64encode(
-                            self.kube_config_wrapper.
-                            get_kube_config_content().
-                            encode('utf8')).decode("utf-8")
-                        }
-                    }
+        out, err = command.Command().run(f"docker inspect "
+                                         "primazactl-worker-test-control-plane")
+        if err != 0:
+            raise RuntimeError("\n[ERROR] error getting data from docker:"
+                               f"{self.cluster_name}-control-plane : {err}")
 
-        self.write_resource(yaml.dump(resource))
-
-    def write_cluster_environment(self,
-                                  cluster_environment_name,
-                                  environment_name):
-
-        logger.log_entry("kind: ClusterEnvironment, "
-                         "cluster_environment_name: "
-                         f"{cluster_environment_name}"
-                         f"environment_name: {environment_name}")
-
-        resource = {"apiVersion": "primaza.io/v1alpha1",
-                    "kind": "ClusterEnvironment",
-                    "metadata": {
-                        "name": cluster_environment_name,
-                        "namespace": self.namespace
-                    },
-                    "spec": {
-                        "environmentName": environment_name,
-                        "clusterContextSecret": "primaza-"
-                                                f"{cluster_environment_name}"
-                                                "-kubeconfig"
-                    }
-                    }
-
-        self.write_resource(yaml.dump(resource))
+        docker_data = yaml.safe_load(out)
+        try:
+            ipaddr = docker_data[0]["NetworkSettings"]["Networks"]["kind"]["IPAddress"]
+            logger.log_info(f"new worker url: http://{ipaddr}:6443")
+            return f"http://{ipaddr}:6443"
+        except KeyError:
+            logger.log_info(f"new worker url not found")
+            return ""
 
     def install_worker(self):
 
@@ -240,22 +213,26 @@ class PrimazaWorker(object):
         self.__deploy_worker()
 
         logger.log_info("Create certificate signing request")
+        csr_name = f"primaza"
         p_csr_pem = self.primaza_main.create_certificate_signing_request_pem()
-        self.create_primaza_user(p_csr_pem)
+        self.create_primaza_user(p_csr_pem,csr_name)
 
         logger.log_info("Create cluster context secret in main")
+        secret_name = f"primaza-{self.cluster_environment}-kubeconfig"
         cc_kubeconfig = self.get_csr_kubeconfig(
-            self.primaza_main.certificate_private_key,
-            f"primaza-{self.environment}")
+            self.primaza_main.certificate_private_key, csr_name)
         self.primaza_main.create_clustercontext_secret(
-            f"primaza-{self.environment}", cc_kubeconfig)
+            secret_name, cc_kubeconfig)
 
-        logger.log_info("Create secret and cluster environment in main")
-        self.write_secret(self.cluster_environment)
-        self.write_cluster_environment(self.cluster_environment,
-                                       self.environment)
+        logger.log_info("Create cluster environment in main")
+        #self.primaza_main.write_secret(secret_name)
+        self.primaza_main.write_cluster_environment(self.cluster_environment,
+                                       self.environment,secret_name)
 
-        logger.log_exit()
+        self.primaza_main.check_state(self.cluster_environment,"Online")
+        self.primaza_main.check_status_condition(self.cluster_environment,"Online")
+
+        logger.log_exit("Worker install complete")
 
     def __deploy_worker(self):
 

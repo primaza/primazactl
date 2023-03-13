@@ -9,7 +9,7 @@ class KubeConfigWrapper(object):
     kube_config_file: str = None
     kube_config_content = None
     cluster_name: str = None
-    cluster_only_api_client: client.ApiClient = None
+    #cluster_only_api_client: client.ApiClient = None
 
     def __init__(self, cluster_name: str, kube_config_file: str):
         self.kube_config_file = kube_config_file
@@ -22,7 +22,7 @@ class KubeConfigWrapper(object):
                         f"file: {self.kube_config_file}")
 
     def get_server_url(self):
-        kube_config_content = self.__get_kube_config_content_as_yaml()
+        kube_config_content = self.get_kube_config_content_as_yaml()
 
         for cluster in kube_config_content["clusters"]:
             if cluster["name"] == self.cluster_name:
@@ -30,11 +30,6 @@ class KubeConfigWrapper(object):
                                 f'server: {cluster["cluster"]["server"]}')
                 return cluster["cluster"]["server"]
         return None
-
-    def set_server_url(self, server_url):
-        config = KubeConfig(self.kube_config_file)
-        config.use_context(f"{self.cluster_name}")
-        config.set_cluster(server=server_url)
 
     def use_context(self):
         logger.log_entry(f"Cluster: {self.cluster_name}, "
@@ -124,8 +119,8 @@ class KubeConfigWrapper(object):
             config.load_kube_config(config_file=self.kube_config_file)
             return client.ApiClient()
         else:
-            if not self.cluster_only_api_client:
-                content = yaml.safe_load(self.get_kube_config_content())
-                self.cluster_only_api_client = \
+            #if not self.cluster_only_api_client:
+            content = yaml.safe_load(self.get_kube_config_content())
+            self.cluster_only_api_client = \
                     config.new_client_from_config_dict(content)
             return self.cluster_only_api_client

@@ -11,7 +11,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 IMG ?= quay.io/mmulholl/primaza-main-controllers:latest
-
+# IMG ?= controller:latest
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 PRIMAZA_REPO = https://github.com/primaza/primaza.git
@@ -57,11 +57,17 @@ LOCALBIN ?= $(OUTPUT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
+GOCACHE ?= "$(OUTPUT_DIR)/.gocache"
+GOFLAGS ?=
+GO ?= GOCACHE=$(GOCACHE) GOFLAGS="$(GOFLAGS)" go
+
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.0
+CONTROLLER_TOOLS_VERSION ?= v0.11.3
 
 PYTHON_VENV_DIR ?= $(OUTPUT_DIR)/venv3
 HACK_DIR ?= $(PROJECT_DIR)/hack
@@ -76,10 +82,11 @@ PRIMAZA_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/primaza_config_latest.yaml
 WORKER_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/worker_config_latest.yaml
 
 KIND_CONFIG_DIR ?= $(SCRIPTS_DIR)/src/primazatest/config
-KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind.yaml
-KIND_CLUSTER_MAIN_NAME ?= primazamain-test
+MAIN_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-main.yaml
+WORKER_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-worker.yaml
+KIND_CLUSTER_MAIN_NAME ?= primazactl-main-test
 KUBE_KIND_CLUSTER_MAIN_NAME ?= kind-$(KIND_CLUSTER_MAIN_NAME)
-KIND_CLUSTER_WORKER_NAME ?= primazaworker-test
+KIND_CLUSTER_WORKER_NAME ?= primazactl-worker-test
 KUBE_KIND_CLUSTER_WORKER_NAME ?= kind-$(KIND_CLUSTER_WORKER_NAME)
 
 KEY_FILE_NAME ?= primaza_private.key
@@ -92,23 +99,32 @@ kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
 	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
 
+.PHONY: controller-gen
+controller-gen: clone $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN): $(LOCALBIN)
+	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) $(GO) install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: manifests
+manifests: clone controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	cd $(TEMP_DIR) && $(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+
 .PHONY: config
-config: clone kustomize $(PRIMAZA_CONFIG_DIR) ## Get config files from primaza repo.
+config: clone manifests kustomize $(PRIMAZA_CONFIG_DIR) ## Get config files from primaza repo.
 	-rm $(PRIMAZA_CONFIG_FILE)
 	cd $(TEMP_DIR)/config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/default > $(PRIMAZA_CONFIG_FILE)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/crd > $(WORKER_CONFIG_FILE)
 
 
-.PHONY: kind-cluster
-kind-cluster:
+.PHONY: kind-clusters
+kind-clusters:
 	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
-	kind create cluster --config $(KIND_CONFIG_FILE) --name $(KIND_CLUSTER_MAIN_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
-	kind create cluster --name $(KIND_CLUSTER_WORKER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	kind create cluster --config $(MAIN_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_MAIN_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	kind create cluster --config $(WORKER_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_WORKER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 
 .PHONY: setup-test
-setup-test: clean kind-cluster primazactl config create-key
+setup-test: clean kind-clusters primazactl config create-key
 
 
 .PHONY: clone
@@ -136,7 +152,7 @@ create-key: primazactl
 
 .PHONY: test
 test: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -v $(PYTHON_VENV_DIR) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_MAIN_NAME)
+	$(PYTHON_VENV_DIR)/bin/primazatest -v $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -p $(KEY_FILE) -m $(KUBE_KIND_CLUSTER_MAIN_NAME)
 
 .PHONY: clean-temp
 clean-temp:

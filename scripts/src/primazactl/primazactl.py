@@ -167,7 +167,7 @@ def main():
                                   args.namespace)
 
                 worker.install_worker()
-                logger.log_info(f"Install and configure {PRIMAZA_MAIN} "
+                logger.log_info(f"Install and configure {PRIMAZA_WORKER} "
                                 f"completed", True)
             except Exception as err:
                 if args.verbose:
