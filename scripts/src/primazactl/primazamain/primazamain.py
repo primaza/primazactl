@@ -1,4 +1,4 @@
-
+from typing import Tuple
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -11,31 +11,50 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 import polling2
 import yaml
+from primazactl.utils.command import Command
+from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
+from primazactl.utils import kubeconfig
+from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
 
 
 class PrimazaMain(object):
+    kube_config_file: str
+    kube_config_file: str
+    cluster_name: str
 
-    kube_config_wrapper: kubeconfigwrapper.KubeConfigWrapper = None
-    cluster_name: str = None
-    kustomize: str = None
-    primaza_config: str = None
-    primaza_version: str = None
+    primaza_config: str | None = None
+    primaza_version: str | None = None
 
     certificate_private_key: bytes = None
     certificate: RSAPrivateKey = None
-    primaza_namespace: str = "primaza-system"
+    namespace: str | None
+    verbose: bool
 
-    def __init__(self, cluster_name: str, kubeconfigfile: str,
-                 config_file: str, version: str,
-                 private_key_file: str, namespace: str):
-        self.cluster_name = cluster_name
-        kcw = kubeconfigwrapper.KubeConfigWrapper(cluster_name,
-                                                  kubeconfigfile)
-        self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
+    kube_config_wrapper: kubeconfigwrapper.KubeConfigWrapper = None
+
+    def __init__(
+            self,
+            cluster_name: str | None,
+            kubeconfig_path: str | None,
+            config_file: str | None,
+            version: str | None,
+            private_key_file: str | None,
+            namespace: str | None,
+            verbose: bool = False):
+
+        self.kube_config_file = kubeconfig_path \
+            if kubeconfig_path is not None \
+            else kubeconfig.from_env()
+
+        self.cluster_name = cluster_name \
+            if cluster_name is not None \
+            else KubeConfigWrapper(None, self.kube_config_file).get_context()
+
         self.primaza_config = config_file
         self.primaza_version = version
-        if namespace:
-            self.primaza_namespace = namespace
+        self.primaza_namespace = namespace if namespace \
+            else PRIMAZA_NAMESPACE
+
         if private_key_file:
             logger.log_info(f"Read the key file : {private_key_file}")
             with open(private_key_file, "rb") as key_file:
@@ -44,38 +63,32 @@ class PrimazaMain(object):
         else:
             self.certificate = rsa.generate_private_key(public_exponent=65537,
                                                         key_size=2048)
+
         self.certificate_private_key = self.certificate.private_bytes(
             format=serialization.PrivateFormat.PKCS8,
             encoding=serialization.Encoding.PEM,
             encryption_algorithm=serialization.NoEncryption()).decode("utf-8")
 
+        self.verbose = verbose
+
+        kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
+        self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
+
         logger.log_info("Primaza main created for cluster "
                         f"{self.cluster_name}")
 
     def install_primaza(self):
-        logger.log_entry()
-        # need an agnostic way to get the kubeconfig - get as a parameter
-        if not self.cluster_name:
-            self.cluster_name = self.kube_config_wrapper.get_cluster_name()
-            if not self.cluster_name:
-                raise RuntimeError("\n[ERROR] installing priamza: "
-                                   "no cluster found.")
-            else:
-                logger.log_info("Cluster set to current context: "
-                                f"{self.cluster_name}")
+        out, err = self.kubectl_do(f"apply -f {self.primaza_config}")
+        if err == 0:
+            print("Install and configure primaza completed")
 
-        self.__deploy_primaza()
+        if self.verbose:
+            print(out)
 
-    def __deploy_primaza(self):
-        logger.log_entry()
-
-        config = primazaconfig.PrimazaConfig("main", self.primaza_config,
-                                             self.primaza_version)
-        err = config.apply(self.kube_config_wrapper)
         if err != 0:
-            raise RuntimeError("\n[ERROR] error deploying "
-                               "Primaza's main controller into "
-                               f"cluster {self.cluster_name} : {err}\n")
+            raise RuntimeError(
+                "error deploying Primaza's controller into "
+                f"cluster {self.cluster_name}")
 
     def __create_certificate_signing_request(self):
         logger.log_entry()
@@ -120,7 +133,7 @@ class PrimazaMain(object):
 
         api_response = corev1.list_namespace()
         for item in api_response.items:
-            print(f"Namesapce: {item.metadata.name} is {item.status.phase}")
+            print(f"Namespace: {item.metadata.name} is {item.status.phase}")
 
         logger.log_info("create secret")
         secret = client.V1Secret(
@@ -149,17 +162,18 @@ class PrimazaMain(object):
                          f"environment_name: {environment_name} "
                          f"secret_name: {secret_name}")
 
-        resource = {"apiVersion": "primaza.io/v1alpha1",
-                    "kind": "ClusterEnvironment",
-                    "metadata": {
-                        "name": cluster_environment_name,
-                        "namespace": self.primaza_namespace
-                    },
-                    "spec": {
-                        "environmentName": environment_name,
-                        "clusterContextSecret": secret_name
-                    }
-                    }
+        resource = {
+            "apiVersion": "primaza.io/v1alpha1",
+            "kind": "ClusterEnvironment",
+            "metadata": {
+                "name": cluster_environment_name,
+                "namespace": self.primaza_namespace
+            },
+            "spec": {
+                "environmentName": environment_name,
+                "clusterContextSecret": secret_name
+            }
+        }
         kcw = self.kube_config_wrapper.get_kube_config_for_cluster()
 
         logger.log_info(f"write cluster environment:\n{yaml.dump(resource)}")
@@ -230,3 +244,22 @@ class PrimazaMain(object):
                   'was not found'
         logger.log_error(message)
         raise RuntimeError(f'[ERROR] {message}')
+
+    def uninstall_primaza(self):
+        out, err = self.kubectl_do(f"delete -f {self.primaza_config}")
+        print(out)
+
+        if err != 0:
+            raise RuntimeError(
+                "error deleting Primaza's controller from "
+                f"cluster {self.cluster_name} : {err}")
+
+    def kubeconfig(self) -> KubeConfigWrapper:
+        return KubeConfigWrapper(self.cluster_name, self.kube_config_file)
+
+    def kubectl_do(self, cmd: str) -> Tuple[str, int]:
+        return Command().run(
+            "kubectl"
+            f" --kubeconfig {self.kube_config_file}"
+            f" --context {self.cluster_name}"
+            f" {cmd}")

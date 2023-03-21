@@ -5,44 +5,43 @@ from typing import Dict
 from datetime import datetime, timezone, timedelta
 from kubernetes import client
 from kubernetes.client.rest import ApiException
-from primazactl.utils import kubeconfigwrapper
-from primazactl.utils import primazaconfig
-from primazactl.utils import logger
-from primazactl.utils import command
-from primazactl.primazamain import primazamain
+from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
+from primazactl.utils import primazaconfig, logger, command
+from primazactl.primazamain.primazamain import PrimazaMain
 
 
 class PrimazaWorker(object):
 
-    namespace: str = None
     cluster_name: str = None
     kube_config_file: str = None
-    kube_config_wrapper: kubeconfigwrapper.KubeConfigWrapper = None
+    kube_config_wrapper: KubeConfigWrapper = None
     config_file: str = None
     version: str = None
     environment: str = None
     cluster_environment: str = None
-    primaza_main: primazamain.PrimazaMain = None
+    primaza_main: PrimazaMain = None
     certificate: str = None
 
-    def __init__(self, primaza_main: primazamain.PrimazaMain,
-                 cluster_name: str,
-                 kube_config_file: str,
-                 config_file: str,
-                 version: str,
-                 environment: str,
-                 cluster_environment: str,
-                 namespace: str = "primaza-system"):
+    def __init__(
+        self,
+        primaza_main: PrimazaMain,
+        cluster_name: str,
+        kube_config_file: str,
+        config_file: str,
+        version: str,
+        environment: str,
+        cluster_environment: str,
+    ):
+        self.primaza_main = primaza_main
         self.cluster_name = cluster_name
         self.config_file = config_file
-        kcw = kubeconfigwrapper.KubeConfigWrapper(cluster_name,
-                                                  kube_config_file)
-        self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
-        self.version = version
         self.environment = environment
         self.cluster_environment = cluster_environment
-        self.namespace = namespace
-        self.primaza_main = primaza_main
+        self.version = version
+
+        kcw = KubeConfigWrapper(cluster_name, kube_config_file)
+        self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
+
         logger.log_info("PrimazaWorker created for cluster "
                         f"{self.cluster_name}")
 
