@@ -10,7 +10,7 @@ class KubeConfigWrapper(object):
     kube_config_content = None
     cluster_name: str = None
 
-    def __init__(self, cluster_name: str, kube_config_file: str):
+    def __init__(self, cluster_name: str | None, kube_config_file: str):
         self.kube_config_file = kube_config_file
         if not cluster_name:
             self.cluster_name = self.get_context()

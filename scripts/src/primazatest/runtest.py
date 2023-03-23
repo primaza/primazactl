@@ -3,6 +3,9 @@ import subprocess
 import sys
 import time
 
+PASS = '\033[92mPASS\033[0m'
+FAIL = '\033[91mFAIL\033[0m'
+
 
 def run_cmd(cmd, silent=False):
 
@@ -37,24 +40,24 @@ def run_and_check(venv_dir, args, expect_msg, expect_error_msg, fail_msg):
         if ctl_out:
             print(f"Response was:\n{ctl_out}")
             if expect_msg in ctl_out:
-                print(f"\n+++[PASS] args: {args}\n")
+                print(f"\n+++[{PASS}] args: {args}\n")
             else:
-                print(f"\n---[FAIL] args: {args} : {fail_msg}\n")
+                print(f"\n---[{FAIL}] args: {args} : {fail_msg}\n")
                 outcome = False
         else:
-            print(f"\n---[FAIL] args: {args} : {fail_msg}\n")
+            print(f"\n---[{FAIL}] args: {args} : {fail_msg}\n")
             outcome = False
 
     if expect_error_msg:
         if ctl_err:
             print(f"Error response was:\n{ctl_err}\n")
             if expect_error_msg in ctl_err:
-                print(f"\n+++[PASS] args: {args}\n")
+                print(f"\n+++[{PASS}] args: {args}\n")
             else:
-                print(f"\n---[FAIL] args: {args} : {fail_msg}\n")
+                print(f"\n---[{FAIL}] args: {args} : {fail_msg}\n")
                 outcome = False
         else:
-            print(f"\n---[FAIL] args: {args} : {fail_msg}\n")
+            print(f"\n---[{FAIL}] args: {args} : {fail_msg}")
             outcome = False
 
     return outcome
@@ -63,51 +66,53 @@ def run_and_check(venv_dir, args, expect_msg, expect_error_msg, fail_msg):
 def test_args(venv_dir):
 
     outcome = True
-    expect_error_msg = "arguments are required: action, install_type"
+    expect_msg = "usage: primazactl [-h]"
     fail_msg = "unexpected response to no arguments"
-    outcome = outcome & run_and_check(venv_dir, None, None,
-                                      expect_error_msg, fail_msg)
+    outcome = outcome & run_and_check(venv_dir, None, expect_msg,
+                                      None, fail_msg)
 
-    args = ["install"]
-    expect_error_msg = "arguments are required: install_type"
+    args = ["main"]
+    expect_msg = "usage: primazactl [-h]"
     fail_msg = "unexpected response to single argument"
-    outcome = outcome & run_and_check(venv_dir, args, None,
-                                      expect_error_msg, fail_msg)
+    outcome = outcome & run_and_check(venv_dir, args, expect_msg,
+                                      None, fail_msg)
 
     args = ["drink"]
-    expect_error_msg = " argument action: invalid choice: 'drink'"
+    expect_error_msg = "error: argument {main,worker}: " \
+        "invalid choice: 'drink' (choose from 'main', 'worker')"
     fail_msg = "unexpected response invalid action"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
-    args = ["install", "marker"]
-    expect_error_msg = "argument install_type: invalid choice: 'marker'"
-    fail_msg = "unexpected response to bad install type"
-    outcome = outcome & run_and_check(venv_dir, args, None,
-                                      expect_error_msg, fail_msg)
-
-    args = ["install", "main", "-k", "/.kube/DoesNotExist"]
-    expect_error_msg = "[Errno 2] No such file or " \
-                       "directory: \'/.kube/DoesNotExist\'"
+    args = ["main", "install", "-k", "/.kube/DoesNotExist"]
+    expect_error_msg = "error: argument -k/--kubeconfig: --config does not" \
+                       " specify a valid file: /.kube/DoesNotExist"
     fail_msg = "unexpected response to bad kube config file"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
-    args = ["install", "main", "-f", "scripts/config/DoesNotExist"]
-    expect_error_msg = "[Errno 2] No such file or " \
-                       "directory: \'scripts/config/DoesNotExist\'"
+    args = ["main", "install", "-f", "scripts/config/DoesNotExist"]
+    expect_error_msg = "error: argument -f/--config: --config does not " \
+                       "specify a valid file: scripts/config/DoesNotExist"
     fail_msg = "unexpected response to bad config file"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
-    args = ["install", "main", "-v", "version.not.semantic"]
-    expect_error_msg = "[ERROR] --version is not a valid semantic version:"
+    args = ["main", "install", "-v", "version.not.semantic"]
+    expect_error_msg = "error: argument -v/--version: --version is not a" \
+                       " valid semantic version: version.not.semantic"
     fail_msg = "unexpected response to bad version"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
-    args = ["install", "main", "-c", "non-existent-cluster"]
-    expect_error_msg = "error: no context exists with the name:"
+    args = ["main",
+            "install",
+            "-c",
+            "non-existent-cluster",
+            "--config",
+            "out/config/primaza_config_latest.yaml"]
+    expect_error_msg = "error: error deploying Primaza's controller" \
+                       " into cluster non-existent-cluster"
     fail_msg = "unexpected response to bad cluster"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
@@ -118,18 +123,19 @@ def test_args(venv_dir):
 def test_main_install(venv_dir, config, cluster):
 
     command = [f"{venv_dir}/bin/primazactl",
-               "install", "main",
+               "main",
+               "install",
                "-f", config,
                "-c", cluster,
                "-x"]
     out, err = run_cmd(command)
 
     if err:
-        print(f"[FAIL] Unexpected error response: {err}")
+        print(f"[{FAIL}] Unexpected error response: {err}")
         return False
 
-    if "Install and configure main completed" not in out:
-        print(f"[FAIL] Unexpected response: {out}")
+    if "Install and configure primaza completed" not in out:
+        print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
     outcome = True
@@ -148,11 +154,11 @@ def test_main_install(venv_dir, config, cluster):
                 outcome = False
                 break
             elif i == 60:
-                print("---[FAIL]: Pods not running after 120s")
+                print("---[{FAIL}]: Pods not running after 120s")
                 print(pods)
                 outcome = False
         if err:
-            print(f"---[FAIL]: {err}")
+            print(f"---[{FAIL}]: {err}")
             outcome = False
             break
         time.sleep(2)
@@ -174,9 +180,9 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster,
                         private_key):
 
     command = [f"{venv_dir}/bin/primazactl",
-               "install", "worker",
+               "worker", "join",
                "-e", "test",
-               "-d", "primaza.environment",
+               "-d", "primaza-environment",
                "-f", config,
                "-c", worker_cluster,
                "-m", main_cluster,
@@ -185,13 +191,14 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster,
 
     out, err = run_cmd(command)
     if err:
-        print(f"[FAIL] Unexpected error response: {err}")
+        print(f"[{FAIL}] Unexpected error response: {err}")
         return False
 
     if "Install and configure worker completed" not in out:
-        print(f"[FAIL] Unexpected response: {out}")
+        print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
+    print(f"[{PASS}] Worker joined\n\n{out}")
     return True
 
 

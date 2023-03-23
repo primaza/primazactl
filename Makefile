@@ -154,7 +154,7 @@ lint: primazactl ## Check python code
 
 .PHONY: create-key
 create-key: primazactl
-	-rm $(KEY_FILE)
+	-rm -f $(KEY_FILE)
 	$(PYTHON_VENV_DIR)/bin/rsakey $(KEY_FILE)
 
 .PHONY: test
@@ -169,6 +169,9 @@ clean-temp:
 .PHONY: clean
 clean: clean-temp
 	rm -rf $(OUTPUT_DIR)
+	rm -rf $(SCRIPTS_DIR)/build
+	rm -rf $(SCRIPTS_DIR)/dist
+	rm -rf $(SCRIPTS_DIR)/src/rh_primaza_control.egg-info
 	rm -rf $(LOCALBIN)
 	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
 	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
