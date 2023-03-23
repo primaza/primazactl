@@ -87,13 +87,15 @@ def test_args(venv_dir):
                                       expect_error_msg, fail_msg)
 
     args = ["install", "main", "-k", "/.kube/DoesNotExist"]
-    expect_error_msg = "[ERROR] --kubeconfig does not specify a valid file"
+    expect_error_msg = "[Errno 2] No such file or " \
+                       "directory: \'/.kube/DoesNotExist\'"
     fail_msg = "unexpected response to bad kube config file"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
     args = ["install", "main", "-f", "scripts/config/DoesNotExist"]
-    expect_error_msg = "[ERROR] --config does not specify a valid file"
+    expect_error_msg = "[Errno 2] No such file or " \
+                       "directory: \'scripts/config/DoesNotExist\'"
     fail_msg = "unexpected response to bad config file"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
@@ -118,19 +120,24 @@ def test_main_install(venv_dir, config, cluster):
     command = [f"{venv_dir}/bin/primazactl",
                "install", "main",
                "-f", config,
-               "-v", venv_dir,
-               "-c", cluster]
+               "-c", cluster,
+               "-x"]
     out, err = run_cmd(command)
 
     if err:
         print(f"[FAIL] Unexpected error response: {err}")
         return False
 
+    if "Install and configure main completed" not in out:
+        print(f"[FAIL] Unexpected response: {out}")
+        return False
+
     outcome = True
     for i in range(1, 60):
 
         pods, err = run_cmd(["kubectl", "get", "pods", "-n",
-                            "primaza-system"], 1 < i < 60)
+                            "primaza-system", "--context",
+                             cluster], 1 < i < 60)
 
         if pods:
             if "Running" in pods and "2/2" in pods:
@@ -153,13 +160,39 @@ def test_main_install(venv_dir, config, cluster):
     if not outcome:
         time.sleep(5)
         pods, err = run_cmd(["kubectl", "describe",
-                            "pods", "-n", "primaza-system"])
+                             "pods", "-n", "primaza-system",
+                             "--context", cluster])
         if pods:
             print(pods)
         if err:
             print(err)
 
     return outcome
+
+
+def test_worker_install(venv_dir, config, worker_cluster, main_cluster,
+                        private_key):
+
+    command = [f"{venv_dir}/bin/primazactl",
+               "install", "worker",
+               "-e", "test",
+               "-d", "primaza.environment",
+               "-f", config,
+               "-c", worker_cluster,
+               "-m", main_cluster,
+               "-p", private_key,
+               "-x"]
+
+    out, err = run_cmd(command)
+    if err:
+        print(f"[FAIL] Unexpected error response: {err}")
+        return False
+
+    if "Install and configure worker completed" not in out:
+        print(f"[FAIL] Unexpected response: {out}")
+        return False
+
+    return True
 
 
 def main():
@@ -170,20 +203,38 @@ def main():
     parser.add_argument("-v", "--venvdir",
                         dest="venv_dir", type=str, required=True,
                         help="location of python venv dir")
+    parser.add_argument("-e", "--worker_config",
+                        dest="worker_config", type=str, required=True,
+                        help="worker config file.")
     parser.add_argument("-f", "--config",
-                        dest="primaza_config", type=str, required=True,
-                        help="primaza config file.")
-    parser.add_argument("-c", "--clustername",
-                        dest="cluster_name", type=str, required=True,
-                        help="name of cluster, as it appears in kubeconfig, \
-                        on which to install primaza or worker")
+                        dest="main_config", type=str, required=True,
+                        help="main config file.")
+    parser.add_argument("-c", "--worker_cluster_name",
+                        dest="worker_cluster_name", type=str, required=True,
+                        help="name of cluster, as it appears in kubeconfig, "
+                             "on which to install worker")
+    parser.add_argument("-m", "--mainclustername",
+                        dest="main_cluster_name", type=str,
+                        required=True,
+                        help="name of cluster, as it appears in kubeconfig, "
+                             "on which main is installed. "
+                             "Defaults to worker install cluster.")
+    parser.add_argument("-p", "--privatekey",
+                        dest="private_key", type=argparse.FileType('r'),
+                        required=True,
+                        help="primaza main private key file. "
+                             "Required for worker install")
 
     args = parser.parse_args()
 
     outcome = test_args(args.venv_dir)
-    outcome = outcome & test_main_install(args.venv_dir, args.primaza_config,
-                                          args.cluster_name)
-
+    outcome = outcome & test_main_install(args.venv_dir, args.main_config,
+                                          args.main_cluster_name)
+    outcome = outcome & test_worker_install(args.venv_dir,
+                                            args.worker_config,
+                                            args.worker_cluster_name,
+                                            args.main_cluster_name,
+                                            args.private_key.name)
     if outcome:
         print("[SUCCESS] All tests passed")
     else:
