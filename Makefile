@@ -159,7 +159,7 @@ create-key: primazactl
 
 .PHONY: test
 test: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -v $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -p $(KEY_FILE) -m $(KUBE_KIND_CLUSTER_MAIN_NAME)
+	$(PYTHON_VENV_DIR)/bin/primazatest -v $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -m $(KUBE_KIND_CLUSTER_MAIN_NAME)
 
 .PHONY: clean-temp
 clean-temp:

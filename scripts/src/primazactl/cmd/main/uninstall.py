@@ -19,6 +19,4 @@ def uninstall_primaza(args):
         args.cluster_name,
         args.kubeconfig,
         args.config,
-        args.version,
-        private_key_file=None,
-        namespace=None).uninstall_primaza()
+        args.version).uninstall_primaza()

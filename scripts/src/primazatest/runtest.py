@@ -176,8 +176,7 @@ def test_main_install(venv_dir, config, cluster):
     return outcome
 
 
-def test_worker_install(venv_dir, config, worker_cluster, main_cluster,
-                        private_key):
+def test_worker_install(venv_dir, config, worker_cluster, main_cluster):
 
     command = [f"{venv_dir}/bin/primazactl",
                "worker", "join",
@@ -186,7 +185,6 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster,
                "-f", config,
                "-c", worker_cluster,
                "-m", main_cluster,
-               "-p", private_key,
                "-x"]
 
     out, err = run_cmd(command)
@@ -207,6 +205,7 @@ def main():
         prog='runtest',
         description='Run primazactl tests',
         epilog="Brought to you by the RedHat app-services team.")
+
     parser.add_argument("-v", "--venvdir",
                         dest="venv_dir", type=str, required=True,
                         help="location of python venv dir")
@@ -226,11 +225,6 @@ def main():
                         help="name of cluster, as it appears in kubeconfig, "
                              "on which main is installed. "
                              "Defaults to worker install cluster.")
-    parser.add_argument("-p", "--privatekey",
-                        dest="private_key", type=argparse.FileType('r'),
-                        required=True,
-                        help="primaza main private key file. "
-                             "Required for worker install")
 
     args = parser.parse_args()
 
@@ -240,8 +234,7 @@ def main():
     outcome = outcome & test_worker_install(args.venv_dir,
                                             args.worker_config,
                                             args.worker_cluster_name,
-                                            args.main_cluster_name,
-                                            args.private_key.name)
+                                            args.main_cluster_name)
     if outcome:
         print("[SUCCESS] All tests passed")
     else:
