@@ -58,7 +58,6 @@ class PrimazaConfig(object):
                            f"{self.repository} for version {self.version}")
 
     def __get_config_content(self, release):
-
         logger.log_entry(f"release = {release}")
         asset_name = f"primaza_{self.type}_config_{release.tag_name}.yaml"
         for asset in release.get_assets():
@@ -73,7 +72,6 @@ class PrimazaConfig(object):
                            f"version {self.version}")
 
     def apply(self, kcw: kubeconfigwrapper.KubeConfigWrapper):
-
         logger.log_entry()
         prefix = f"kubeconfig-primaza-{kcw.get_cluster_name()}-"
         with tempfile.NamedTemporaryFile(prefix=prefix) as temp_file:

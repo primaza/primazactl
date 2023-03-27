@@ -93,13 +93,6 @@ def add_args_join(parser: argparse.ArgumentParser):
         type=str,
         default=None)
 
-    parser.add_argument(
-        "-p", "--privatekey",
-        dest="private_key",
-        type=existing_file,
-        required=True,
-        help="Primaza private key file")
-
 
 def join_primaza(args):
     validate(args)
@@ -109,20 +102,16 @@ def join_primaza(args):
         kubeconfig_path=args.main_kubeconfig,
         config_file=None,
         version=None,
-        private_key_file=args.private_key,
-        namespace=None,
-        verbose=args.verbose,
     )
 
     PrimazaWorker(
         primaza_main=main,
         cluster_name=args.cluster_name,
-        kube_config_file=args.kubeconfig,
+        kubeconfig_file=args.kubeconfig,
         config_file=args.config,
         version=args.version,
         environment=args.environment,
         cluster_environment=args.cluster_environment,
-        # namespace=args.namespace
     ).install_worker()
 
     print("Install and configure worker completed")

@@ -1,14 +1,8 @@
 from typing import Tuple
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from primazactl.utils import kubeconfigwrapper
 from primazactl.utils import primazaconfig
 from primazactl.utils import logger
 from kubernetes import client
-from kubernetes.client.rest import ApiException
 import polling2
 import yaml
 from primazactl.utils.command import Command
@@ -18,29 +12,20 @@ from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
 
 
 class PrimazaMain(object):
+    kubeconfig: kubeconfigwrapper.KubeConfigWrapper = None
     kube_config_file: str
-    kube_config_file: str
+
     cluster_name: str
 
     primaza_config: str | None = None
     primaza_version: str | None = None
-
-    certificate_private_key: bytes = None
-    certificate: RSAPrivateKey = None
-    namespace: str | None
-    verbose: bool
-
-    kube_config_wrapper: kubeconfigwrapper.KubeConfigWrapper = None
 
     def __init__(
             self,
             cluster_name: str | None,
             kubeconfig_path: str | None,
             config_file: str | None,
-            version: str | None,
-            private_key_file: str | None,
-            namespace: str | None,
-            verbose: bool = False):
+            version: str | None):
 
         self.kube_config_file = kubeconfig_path \
             if kubeconfig_path is not None \
@@ -52,27 +37,9 @@ class PrimazaMain(object):
 
         self.primaza_config = config_file
         self.primaza_version = version
-        self.primaza_namespace = namespace if namespace \
-            else PRIMAZA_NAMESPACE
-
-        if private_key_file:
-            logger.log_info(f"Read the key file : {private_key_file}")
-            with open(private_key_file, "rb") as key_file:
-                self.certificate = serialization.\
-                    load_pem_private_key(key_file.read(), password=None)
-        else:
-            self.certificate = rsa.generate_private_key(public_exponent=65537,
-                                                        key_size=2048)
-
-        self.certificate_private_key = self.certificate.private_bytes(
-            format=serialization.PrivateFormat.PKCS8,
-            encoding=serialization.Encoding.PEM,
-            encryption_algorithm=serialization.NoEncryption()).decode("utf-8")
-
-        self.verbose = verbose
 
         kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
-        self.kube_config_wrapper = kcw.get_kube_config_for_cluster()
+        self.kubeconfig = kcw.get_kube_config_for_cluster()
 
         logger.log_info("Primaza main created for cluster "
                         f"{self.cluster_name}")
@@ -80,74 +47,34 @@ class PrimazaMain(object):
     def install_primaza(self):
         out, err = self.kubectl_do(f"apply -f {self.primaza_config}")
         if err == 0:
-            print("Install and configure primaza completed")
+            logger.log_entry("Install and configure primaza completed")
 
-        if self.verbose:
-            print(out)
-
+        logger.log_info(out)
         if err != 0:
             raise RuntimeError(
                 "error deploying Primaza's controller into "
                 f"cluster {self.cluster_name}")
 
-    def __create_certificate_signing_request(self):
-        logger.log_entry()
-        # Generate RSA Key and CertificateSignignRequest
-        return x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u""),
-            x509.NameAttribute(NameOID.LOCALITY_NAME, u""),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, u'primaza'),
-            x509.NameAttribute(NameOID.COMMON_NAME, u'primaza'),
-        ])).add_extension(
-            x509.SubjectAlternativeName([x509.DNSName(u"primaza.io")]),
-            critical=False,
-        ).sign(self.certificate, hashes.SHA256())
-
-    def create_certificate_signing_request_pem(self) -> bytes:
-        """
-        Creates the V1CertificateSigningRequest needed for registration on
-        a worker cluster
-        """
-        logger.log_entry()
-
-        c = self.__create_certificate_signing_request()
-        return c.public_bytes(serialization.Encoding.PEM)
-
     def create_clustercontext_secret(self, secret_name: str, kubeconfig: str):
         """
         Creates the Primaza's ClusterContext secret
         """
-        logger.log_entry(f"Secret name: {secret_name}")
-
-        api_client = self.kube_config_wrapper.get_api_client()
+        api_client = self.kubeconfig.get_api_client()
         corev1 = client.CoreV1Api(api_client)
-        try:
-            corev1.read_namespaced_secret(name=secret_name,
-                                          namespace=self.primaza_namespace)
-            corev1.delete_namespaced_secret(name=secret_name,
-                                            namespace=self.primaza_namespace)
-        except ApiException as e:
-            if e.reason != "Not Found":
-                raise e
 
-        api_response = corev1.list_namespace()
-        for item in api_response.items:
-            print(f"Namespace: {item.metadata.name} is {item.status.phase}")
-
-        logger.log_info("create secret")
         secret = client.V1Secret(
-            metadata=client.V1ObjectMeta(name=secret_name),
+            metadata=client.V1ObjectMeta(
+                name=secret_name, namespace=PRIMAZA_NAMESPACE),
             string_data={"kubeconfig": kubeconfig})
 
         logger.log_info("create_namespaced_secret")
-        corev1.create_namespaced_secret(namespace=self.primaza_namespace,
-                                        body=secret)
+        corev1.create_namespaced_secret(
+            namespace=PRIMAZA_NAMESPACE, body=secret)
 
     def write_resource(self, resource, kcw=None):
         logger.log_entry()
         if not kcw:
-            kcw = self.kube_config_wrapper
+            kcw = self.kubeconfig
         resource_config = primazaconfig.PrimazaConfig()
         resource_config.set_content(resource)
         resource_config.apply(kcw)
@@ -167,14 +94,14 @@ class PrimazaMain(object):
             "kind": "ClusterEnvironment",
             "metadata": {
                 "name": cluster_environment_name,
-                "namespace": self.primaza_namespace
+                "namespace": PRIMAZA_NAMESPACE,
             },
             "spec": {
                 "environmentName": environment_name,
-                "clusterContextSecret": secret_name
+                "clusterContextSecret": secret_name,
             }
         }
-        kcw = self.kube_config_wrapper.get_kube_config_for_cluster()
+        kcw = self.kubeconfig.get_kube_config_for_cluster()
 
         logger.log_info(f"write cluster environment:\n{yaml.dump(resource)}")
         self.write_resource(yaml.dump(resource), kcw=kcw)
@@ -182,7 +109,7 @@ class PrimazaMain(object):
     def check_state(self, ce_name, state, timeout=60):
 
         logger.log_entry(f"check state, ce_name: {ce_name}, state:{state}")
-        api_client = self.kube_config_wrapper.get_api_client()
+        api_client = self.kubeconfig.get_api_client()
         cobj = client.CustomObjectsApi(api_client)
 
         try:
@@ -212,7 +139,7 @@ class PrimazaMain(object):
     def check_status_condition(self, ce_name: str, ctype: str, cstatus: str):
         logger.log_entry(f"check status condition, ce_name: {ce_name},"
                          f"type: {ctype}, status {cstatus}")
-        api_client = self.kube_config_wrapper.get_api_client()
+        api_client = self.kubeconfig.get_api_client()
         cobj = client.CustomObjectsApi(api_client)
 
         ce_status = cobj.get_namespaced_custom_object_status(
