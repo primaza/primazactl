@@ -148,6 +148,20 @@ primazactl: ## Setup virtual environment
 	cd $(SCRIPTS_DIR) && $(PYTHON_VENV_DIR)/bin/pip3 install -r requirements.txt
 	cd $(SCRIPTS_DIR) && $(PYTHON_VENV_DIR)/bin/python3 setup.py install
 
+.PHONY: single-binary
+single-binary: ## Release primazactl as single binary
+	-rm -rf $(PYTHON_VENV_DIR)
+	python3 -m venv $(PYTHON_VENV_DIR)
+	$(PYTHON_VENV_DIR)/bin/pip3 install --upgrade pyinstaller
+	$(PYTHON_VENV_DIR)/bin/pip3 install -r $(SCRIPTS_DIR)/requirements.txt
+	$(PYTHON_VENV_DIR)/bin/pyinstaller \
+		--onefile \
+		--clean \
+		--noconfirm \
+		--distpath $(PYTHON_VENV_DIR)/dist \
+		--workpath $(PYTHON_VENV_DIR)/build \
+		$(SCRIPTS_DIR)/src/primazactl/primazactl.py
+
 .PHONY: lint
 lint: primazactl ## Check python code
 	PYTHON_VENV_DIR=$(PYTHON_VENV_DIR) $(HACK_DIR)/check-python/lint-python-code.sh
