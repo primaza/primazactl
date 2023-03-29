@@ -68,7 +68,7 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.0.0
+KUSTOMIZE_VERSION ?= v4.5.7
 CONTROLLER_TOOLS_VERSION ?= v0.11.3
 
 PYTHON_VENV_DIR ?= $(OUTPUT_DIR)/venv3
@@ -126,9 +126,12 @@ kind-clusters: config image
 	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
 	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
 	kind create cluster --config $(MAIN_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_MAIN_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+	kubectl rollout status -n cert-manager deploy/cert-manager-webhook -w --timeout=120s
 	kind load docker-image $(IMG) --name $(KIND_CLUSTER_MAIN_NAME)
 	kind create cluster --config $(WORKER_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_WORKER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
-
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+	kubectl rollout status -n cert-manager deploy/cert-manager-webhook -w --timeout=120s
 
 .PHONY: setup-test
 setup-test: clean image kind-clusters primazactl config create-key
