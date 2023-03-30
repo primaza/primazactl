@@ -1,12 +1,14 @@
 import os
 import argparse
+import traceback
+import sys
 from pathlib import Path
 from primazactl.errors import AtLeastOneError
 from primazactl.types import \
     existing_file, kubernetes_name, semvertag_or_latest
 from primazactl.primazamain.primazamain import PrimazaMain
-from primazactl.utils.kubeconfig import from_env
 from primazactl.primazaworker.primazaworker import PrimazaWorker
+from primazactl.utils.kubeconfig import from_env
 
 
 def add_join(parser: argparse.ArgumentParser, parents=[]):
@@ -97,24 +99,29 @@ def add_args_join(parser: argparse.ArgumentParser):
 def join_primaza(args):
     validate(args)
 
-    main = PrimazaMain(
-        cluster_name=args.main_clustername,
-        kubeconfig_path=args.main_kubeconfig,
-        config_file=None,
-        version=None,
-    )
+    try:
+        main = PrimazaMain(
+            cluster_name=args.main_clustername,
+            kubeconfig_path=args.main_kubeconfig,
+            config_file=None,
+            version=None,
+        )
 
-    PrimazaWorker(
-        primaza_main=main,
-        cluster_name=args.cluster_name,
-        kubeconfig_file=args.kubeconfig,
-        config_file=args.config,
-        version=args.version,
-        environment=args.environment,
-        cluster_environment=args.cluster_environment,
-    ).install_worker()
+        PrimazaWorker(
+            primaza_main=main,
+            cluster_name=args.cluster_name,
+            kubeconfig_file=args.kubeconfig,
+            config_file=args.config,
+            version=args.version,
+            environment=args.environment,
+            cluster_environment=args.cluster_environment,
+        ).install_worker()
 
-    print("Install and configure worker completed")
+        print("Install and configure worker completed")
+    except Exception as e:
+        print(traceback.format_exc())
+        print(f"\nAn exception occurred executing the "
+              f"worker join function: {e}", file=sys.stderr)
 
 
 def validate(args):

@@ -11,13 +11,11 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 IMG ?= quay.io/mmulholl/primaza-main-controllers:latest
-#
 
-IMG ?= controller:latest
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 PRIMAZA_REPO = https://github.com/primaza/primaza.git
-PRIMAZA_BRANCH = main
+PRIMAZA_BRANCH ?= main
 
 .PHONY: all
 all: lint test
@@ -134,7 +132,7 @@ kind-clusters: config image
 	kubectl rollout status -n cert-manager deploy/cert-manager-webhook -w --timeout=120s
 
 .PHONY: setup-test
-setup-test: clean image kind-clusters primazactl config create-key
+setup-test: clean image kind-clusters primazactl config
 
 
 .PHONY: clone
@@ -168,11 +166,6 @@ single-binary: ## Release primazactl as single binary
 .PHONY: lint
 lint: primazactl ## Check python code
 	PYTHON_VENV_DIR=$(PYTHON_VENV_DIR) $(HACK_DIR)/check-python/lint-python-code.sh
-
-.PHONY: create-key
-create-key: primazactl
-	-rm -f $(KEY_FILE)
-	$(PYTHON_VENV_DIR)/bin/rsakey $(KEY_FILE)
 
 .PHONY: test
 test: setup-test

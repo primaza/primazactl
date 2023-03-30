@@ -1,4 +1,5 @@
 import inspect
+import os
 
 verbose = False
 
@@ -39,6 +40,6 @@ def __write_log(type, message):
         calling_method = stack[2][0].f_code.co_name
         print(f"{type} {calling_class}.{calling_method} : {message}")
     else:
-        calling_file = stack[1].filename
-        calling_method = stack[1].function
+        calling_file = os.path.basename(stack[2].filename)
+        calling_method = stack[2].function
         print(f"{type} {calling_file}:{calling_method} : {message}")

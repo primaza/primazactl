@@ -1,5 +1,4 @@
 from typing import Tuple
-from primazactl.utils import kubeconfigwrapper
 from primazactl.utils import primazaconfig
 from primazactl.utils import logger
 from kubernetes import client
@@ -7,15 +6,13 @@ import polling2
 import yaml
 from primazactl.utils.command import Command
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
-from primazactl.utils import kubeconfig
 from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
+from primazactl.primaza.primaza import Primaza
 
 
-class PrimazaMain(object):
-    kubeconfig: kubeconfigwrapper.KubeConfigWrapper = None
+class PrimazaMain(Primaza):
+    kubeconfig: KubeConfigWrapper = None
     kube_config_file: str
-
-    cluster_name: str
 
     primaza_config: str | None = None
     primaza_version: str | None = None
@@ -27,9 +24,10 @@ class PrimazaMain(object):
             config_file: str | None,
             version: str | None):
 
-        self.kube_config_file = kubeconfig_path \
-            if kubeconfig_path is not None \
-            else kubeconfig.from_env()
+        super().__init__(PRIMAZA_NAMESPACE,
+                         cluster_name,
+                         None,
+                         kubeconfig_path)
 
         self.cluster_name = cluster_name \
             if cluster_name is not None \
@@ -55,21 +53,11 @@ class PrimazaMain(object):
                 "error deploying Primaza's controller into "
                 f"cluster {self.cluster_name}")
 
-    def create_clustercontext_secret(self, secret_name: str, kubeconfig: str):
-        """
-        Creates the Primaza's ClusterContext secret
-        """
-        api_client = self.kubeconfig.get_api_client()
-        corev1 = client.CoreV1Api(api_client)
-
-        secret = client.V1Secret(
-            metadata=client.V1ObjectMeta(
-                name=secret_name, namespace=PRIMAZA_NAMESPACE),
-            string_data={"kubeconfig": kubeconfig})
-
-        logger.log_info("create_namespaced_secret")
-        corev1.create_namespaced_secret(
-            namespace=PRIMAZA_NAMESPACE, body=secret)
+    def create_primaza_service_account(self, cluster_environment: str) -> str:
+        logger.log_entry(f"environment: {cluster_environment}")
+        self.create_service_account(f"primaza-{cluster_environment}-"
+                                    f"{self.namespace}")
+        return self.user
 
     def write_resource(self, resource, kcw=None):
         logger.log_entry()
@@ -94,7 +82,7 @@ class PrimazaMain(object):
             "kind": "ClusterEnvironment",
             "metadata": {
                 "name": cluster_environment_name,
-                "namespace": PRIMAZA_NAMESPACE,
+                "namespace": self.namespace,
             },
             "spec": {
                 "environmentName": environment_name,
