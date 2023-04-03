@@ -1,13 +1,14 @@
 import yaml
-from typing import Dict
-from primazactl.utils import logger, command
+from typing import Dict, Tuple
+from primazactl.utils import logger
+from primazactl.utils.command import Command
 from primazactl.identity import kubeidentity
 from primazactl.kube.secret import Secret
 from primazactl.utils import kubeconfig
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 
 
-class Primaza(object):
+class PrimazaCluster(object):
 
     namespace: str = None
     cluster_name: str = None
@@ -31,7 +32,7 @@ class Primaza(object):
         logger.log_entry()
         cluster = f'{self.cluster_name.replace("kind-","")}'
         control_plane = f'{cluster}-control-plane'
-        out, err = command.Command().run(f"docker inspect {control_plane}")
+        out, err = Command().run(f"docker inspect {control_plane}")
         if err != 0:
             raise RuntimeError("\n[ERROR] error getting data from docker:"
                                f"{control_plane} : {err}")
@@ -79,3 +80,10 @@ class Primaza(object):
 
     def kubeconfig(self) -> KubeConfigWrapper:
         return KubeConfigWrapper(self.cluster_name, self.kube_config_file)
+
+    def kubectl_do(self, cmd: str) -> Tuple[str, int]:
+        return Command().run(
+            "kubectl"
+            f" --kubeconfig {self.kube_config_file}"
+            f" --context {self.cluster_name}"
+            f" {cmd}")

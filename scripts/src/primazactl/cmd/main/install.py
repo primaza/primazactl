@@ -2,7 +2,7 @@ import argparse
 import traceback
 import sys
 from .common import add_shared_args, validate
-from primazactl.primazamain.primazamain import PrimazaMain
+from primazactl.primazamain.maincluster import MainCluster
 
 
 def add_install(parser: argparse.ArgumentParser, parents=[]):
@@ -17,7 +17,7 @@ def add_install(parser: argparse.ArgumentParser, parents=[]):
 def install_primaza(args):
     validate(args)
     try:
-        PrimazaMain(
+        MainCluster(
             args.cluster_name,
             args.kubeconfig,
             args.config,

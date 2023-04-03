@@ -6,8 +6,8 @@ from pathlib import Path
 from primazactl.errors import AtLeastOneError
 from primazactl.types import \
     existing_file, kubernetes_name, semvertag_or_latest
-from primazactl.primazamain.primazamain import PrimazaMain
-from primazactl.primazaworker.primazaworker import PrimazaWorker
+from primazactl.primazamain.maincluster import MainCluster
+from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.utils.kubeconfig import from_env
 
 
@@ -100,14 +100,14 @@ def join_primaza(args):
     validate(args)
 
     try:
-        main = PrimazaMain(
+        main = MainCluster(
             cluster_name=args.main_clustername,
             kubeconfig_path=args.main_kubeconfig,
             config_file=None,
             version=None,
         )
 
-        PrimazaWorker(
+        WorkerCluster(
             primaza_main=main,
             cluster_name=args.cluster_name,
             kubeconfig_file=args.kubeconfig,

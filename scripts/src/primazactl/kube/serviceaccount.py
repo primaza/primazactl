@@ -31,7 +31,7 @@ class ServiceAccount(object):
                                  "create_namespaced_service_account: %s\n" % e)
                 raise e
 
-    def read(self) -> str:
+    def read(self) -> client.V1ServiceAccount | None:
         logger.log_entry(f"Identity: {self.identity}, "
                          f"namespace: {self.namespace}")
 
@@ -46,7 +46,7 @@ class ServiceAccount(object):
                                  "read_namespaced_secret: %s\n" % e)
                 raise e
 
-        return ""
+        return None
 
     def delete(self):
         logger.log_entry(f"Identity: {self.identity}, "

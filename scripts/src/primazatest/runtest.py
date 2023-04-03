@@ -198,20 +198,22 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster):
     return True
 
 
-def test_applications_namespace_create(venv_dir, worker_cluster, main_cluster):
+def test_application_namespace_create(venv_dir, worker_cluster,
+                                      main_cluster, config):
 
     command = [f"{venv_dir}/bin/primazactl",
-               "worker", "create", "applications-namespace",
+               "worker", "create", "application-namespace",
                "-d", "primaza-environment",
                "-c", worker_cluster,
-               "-m", main_cluster]
+               "-m", main_cluster,
+               "-f", config]
 
     out, err = run_cmd(command)
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False
 
-    if "Applications namespace was successfully created" not in out:
+    if "application namespace was successfully created" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
@@ -219,20 +221,22 @@ def test_applications_namespace_create(venv_dir, worker_cluster, main_cluster):
     return True
 
 
-def test_services_namespace_create(venv_dir, worker_cluster, main_cluster):
+def test_service_namespace_create(venv_dir, worker_cluster,
+                                  main_cluster, config):
 
     command = [f"{venv_dir}/bin/primazactl",
-               "worker", "create", "services-namespace",
+               "worker", "create", "service-namespace",
                "-d", "primaza-environment",
                "-c", worker_cluster,
-               "-m", main_cluster]
+               "-m", main_cluster,
+               "-f", config]
 
     out, err = run_cmd(command)
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False
 
-    if "Services namespace was successfully created" not in out:
+    if "service namespace was successfully created" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
@@ -265,6 +269,12 @@ def main():
                         help="name of cluster, as it appears in kubeconfig, "
                              "on which main is installed. "
                              "Defaults to worker install cluster.")
+    parser.add_argument("-a", "--application_config",
+                        dest="app_config", type=str, required=True,
+                        help="application namespace config file.")
+    parser.add_argument("-s", "--service_config",
+                        dest="service_config", type=str, required=True,
+                        help="service namespace config file.")
 
     args = parser.parse_args()
 
@@ -275,14 +285,16 @@ def main():
                                             args.worker_config,
                                             args.worker_cluster_name,
                                             args.main_cluster_name)
-    outcome = outcome & test_applications_namespace_create(
+    outcome = outcome & test_application_namespace_create(
         args.venv_dir,
         args.worker_cluster_name,
-        args.main_cluster_name)
-    outcome = outcome & test_services_namespace_create(
+        args.main_cluster_name,
+        args.app_config)
+    outcome = outcome & test_service_namespace_create(
         args.venv_dir,
         args.worker_cluster_name,
-        args.main_cluster_name)
+        args.main_cluster_name,
+        args.service_config)
 
     if outcome:
         print("[SUCCESS] All tests passed")

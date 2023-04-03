@@ -35,7 +35,7 @@ class Secret(object):
                                  "create_namespaced_secret: %s\n" % e)
                 raise e
 
-    def read(self) -> str:
+    def read(self) -> client.V1Secret | None:
         logger.log_entry(f"Secret name: {self.name}, "
                          f"namespace: {self.namespace}")
 
@@ -49,7 +49,7 @@ class Secret(object):
                                  "read_namespaced_secret: %s\n" % e)
                 raise e
 
-        return ""
+        return None
 
     def delete(self):
         logger.log_entry(f"Secret name: {self.name}, "
@@ -63,3 +63,16 @@ class Secret(object):
                 logger.log_error("Exception when calling "
                                  "delete_namespaced_secret: %s\n" % e)
                 raise e
+
+    def list(self) -> client.V1ResourceQuotaList | None:
+        logger.log_entry(f"Secret name: {self.name}, "
+                         f"namespace: {self.namespace}")
+
+        try:
+            return self.corev1.list_namespaced_secret(namespace=self.namespace)
+        except ApiException as e:
+            if e.reason != "Not Found":
+                logger.log_error("Exception when calling "
+                                 "list_namespaced_secret: %s\n" % e)
+                raise e
+        return None

@@ -1,31 +1,34 @@
 from primazactl.utils import logger
-from primazactl.primazamain.primazamain import PrimazaMain
-from .primazaworker import PrimazaWorker
 from primazactl.kube.namespace import Namespace
 from primazactl.kube.serviceaccount import ServiceAccount
 from primazactl.kube.role import Role
+from primazactl.kube.secret import Secret
 from primazactl.kube.rolebinding import RoleBinding
-from primazactl.kube.roles.primazaroles import \
-    get_application_agent_role, \
-    get_service_agent_role, \
-    get_primaza_namespace_role
-from primazactl.cmd.worker.create.constants import APPLICATIONS
-from primazactl.primaza.primaza import Primaza
+from primazactl.kube.roles.primazaroles import get_primaza_namespace_role
+from primazactl.cmd.worker.create.constants import APPLICATION
+from primazactl.primaza.primazacluster import PrimazaCluster
 
 
-class WorkerNamespace(Primaza):
+class WorkerNamespace(PrimazaCluster):
 
     main_cluster: str = None
     type: str = None
     kube_namesapce: Namespace = None
     cluster_environment: str = None
+    role_config: str = None
+    main_user: str = None
+    secret_cfg: str = None
 
     def __init__(self, type,
+                 namespace,
                  cluster_environment,
                  worker_cluster,
-                 main_cluster):
+                 main_cluster,
+                 role_config,
+                 main_user,
+                 secret_kcfg):
 
-        super().__init__(type,
+        super().__init__(namespace,
                          worker_cluster,
                          f"primaza-{self.type}-agent",
                          None)
@@ -33,46 +36,17 @@ class WorkerNamespace(Primaza):
         self.type = type
         self.main_cluster = main_cluster
         api_client = self.kubeconfig.get_api_client()
-        self.namespace = self.type
         self.cluster_environment = cluster_environment
-        self.kube_namespace = Namespace(api_client, self.type)
+        self.kube_namespace = Namespace(api_client, namespace)
+        self.role_config = role_config
+        self.main_user = main_user
+        self.secret_cfg = secret_kcfg
 
     def create(self):
         logger.log_entry(f"namespace type: {self.type}, "
                          f"cluster environment: {self.cluster_environment}, "
                          f"worker cluster: {self.cluster_name}, "
                          f"main_cluster: {self.main_cluster}")
-
-        self.primaza_main = PrimazaMain(
-            cluster_name=self.main_cluster,
-            kubeconfig_path=None,
-            config_file=None,
-            version=None,
-        )
-
-        worker = PrimazaWorker(
-            primaza_main=None,
-            cluster_name=self.cluster_name,
-            kubeconfig_file=None,
-            config_file=None,
-            version=None,
-            environment=None,
-            cluster_environment=self.cluster_environment,
-        )
-
-        # On primaza main
-        # - Use the Worker key to create a CertificateSigningRequest (CSR)
-        #   named after the Cluster Environment and the Environment, like
-        #   primaza-$CLUSTER_ENVIRONMENT_NAME
-        # - Approve the CSR
-        # - Create a kubeconfig with CSR's Certificate
-        self.primaza_main.\
-            create_primaza_service_account(self.cluster_environment)
-        secret_name = f"primaza-{self.cluster_environment}"
-        cc_kubeconfig = self.primaza_main.get_kubeconfig(
-            self.primaza_main.user,
-            self.cluster_name)
-        worker.create_clustercontext_secret(secret_name, cc_kubeconfig)
 
         # On worker cluster
         # - create the namespace
@@ -82,33 +56,23 @@ class WorkerNamespace(Primaza):
         #     'primaza-auth-$CLUSTER_ENVIRONMENT' the Worker key
         #     and the kubeconfig for authenticating with the Primaza cluster.
         secret_name = f"primaza-auth-{self.cluster_environment}"
-        self.create_clustercontext_secret(secret_name, cc_kubeconfig)
+        self.create_clustercontext_secret(secret_name, self.secret_cfg)
 
         # - In the created namespace, create a Service Account for the
         #   agent to be deployed in the namespace (named for example
         #   primaza-application-agent or primaza-service-agent)
-        user = f"primaza-{self.type}-agent"
+        service_account_name = f"primaza-{self.type}-agent"
         service_account = ServiceAccount(self.kubeconfig.get_api_client(),
-                                         user, self.namespace)
+                                         service_account_name, self.namespace)
         service_account.create()
 
         # - In the created namespace, create the Role for the
         #   agent (named for example primaza-application-agent or
         #   primaza-service-agent), that will grant it access to
         #   namespace and its resources
-        agent_policy = get_application_agent_role(user) \
-            if self.type == APPLICATIONS \
-            else get_service_agent_role(user)
-        api_client = self.kubeconfig.get_api_client()
-        agent_role = Role(api_client, user, agent_policy)
-        agent_role.create()
-
         # - In the created namespace, create a RoleBinding for binding
         #   the agents' Service Account to the role defined above
-        agent_binding = RoleBinding(api_client,
-                                    f"{user}-binding",
-                                    agent_role.user)
-        agent_binding. create()
+        self.install_roles()
 
         # - In the created namespace, create a Role (named
         #   primaza-application or primaza-service), that will grant
@@ -116,14 +80,81 @@ class WorkerNamespace(Primaza):
         #   (e.g. create ServiceClaim, create RegisteredServices)
         #
         #    Reminder: the primaza user is created on worker cluster setup
-        primaza_policy = get_primaza_namespace_role(self.primaza_main.user)
-        primaza_role = Role(api_client, user, primaza_policy)
+        api_client = self.kubeconfig.get_api_client()
+        primaza_policy = get_primaza_namespace_role(self.main_user)
+        primaza_role = Role(api_client, self.main_user, primaza_policy)
         primaza_role.create()
 
         # - In the created namespace, RoleBinding for binding the user primaza
         #   to the role defined above
         primaza_binding = RoleBinding(api_client,
-                                      f"{self.primaza_main.user}-"
+                                      f"{self.main_user}-"
                                       f"{self.type}-binding",
-                                      primaza_role.user)
+                                      self.namespace,
+                                      self.main_user,
+                                      service_account_name)
         primaza_binding. create()
+
+    def install_roles(self):
+        logger.log_entry(f"config: {self.role_config}")
+        out, err = self.kubectl_do(f"apply -f {self.role_config}")
+        if err == 0:
+            logger.log_entry("Deploy namespace config completed")
+
+        logger.log_info(out)
+        if err != 0:
+            raise RuntimeError(
+                "error deploying namespace config into "
+                f"cluster {self.cluster_name}")
+
+    def check(self):
+
+        if self.type == APPLICATION:
+            # For applications namespaces, Service Account
+            # primaza-application-agent must be able to perform
+            # the following actions:
+            # - read,list Secrets
+            self.__check_secrets()
+            # - read,list,watch ServiceBinding
+            self.__check_servicebinding()
+            # - read,list,update/watch Deployments
+            self.__check_deployments(True)
+            # - read,list,update Pods
+            self.__check_pods()
+        else:
+            # For services namespaces, Service Account primaza-service-agent
+            # must be able to perform the following actions:
+            # - read,list Services
+            self.__check_services()
+            # - read,list Deployments
+            self.__check_deployments(False)
+
+    def __check_secrets(self):
+        # - read,list Secrets
+        logger.log_entry()
+        api_client = self.kubeconfig.get_api_client()
+        list_secret = Secret(api_client, None, self.type, None)
+        for secret in list_secret.list().items:
+            logger.log_info(f"Secret found: {secret.metadata.name}")
+            named_secret = Secret(api_client,
+                                  secret.metadata.name,
+                                  self.type, None)
+            if not named_secret.read():
+                logger.log_error(f"Failed to read secret : "
+                                 f"{secret.metadata.name}")
+
+    def __check_servicebinding(self):
+        # - read,list,watch ServiceBinding
+        logger.log_entry()
+
+    def __check_deployments(self, update_watch):
+        # - read,list,update/watch Deployments
+        logger.log_entry(f"Include update/watch: {update_watch}")
+
+    def __check_pods(self):
+        # - read,list,update Pods
+        logger.log_entry()
+
+    def __check_services(self):
+        # - read,list Services
+        logger.log_entry()

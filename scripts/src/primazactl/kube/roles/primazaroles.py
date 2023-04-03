@@ -22,44 +22,11 @@ def get_worker_role(user: str) -> client.V1ClusterRole:
         ])
 
 
-def get_application_agent_role(user: str) -> client.V1ClusterRole:
-    logger.log_entry(f"user: {user}")
-    return client.V1ClusterRole(
-        metadata=client.V1ObjectMeta(name=user),
-        rules=[
-            client.V1PolicyRule(
-                api_groups=["apps"],
-                resources=["deployments"],
-                verbs=["get", "list", "watch", "update", "patch"]),
-            client.V1PolicyRule(
-                api_groups=["primaza.io"],
-                resources=["servicebindings", "serviceclaims"],
-                verbs=["get", "list", "watch"])
-        ])
-
-
-def get_service_agent_role(user: str) -> client.V1ClusterRole:
-    logger.log_entry(f"user: {user}")
-    return client.V1ClusterRole(
-        metadata=client.V1ObjectMeta(name=user),
-        rules=[
-            client.V1PolicyRule(
-                api_groups=["primaza.io"],
-                resources=["serviceclass"],
-                verbs=["get", "list", "watch"])
-        ])
-
-
 def get_primaza_namespace_role(user: str) -> client.V1ClusterRole:
     logger.log_entry(f"user: {user}")
     return client.V1ClusterRole(
         metadata=client.V1ObjectMeta(name=user),
         rules=[
-            client.V1PolicyRule(
-                api_groups=[""],
-                resources=["services"],
-                verbs=["get", "list", "watch", "create", "update",
-                       "patch", "delete"]),
             client.V1PolicyRule(
                 api_groups=["apps"],
                 resources=["deployments"],

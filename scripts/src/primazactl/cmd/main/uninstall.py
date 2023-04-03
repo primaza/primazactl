@@ -2,7 +2,7 @@ import argparse
 import traceback
 import sys
 from .common import add_shared_args, validate
-from primazactl.primazamain.primazamain import PrimazaMain
+from primazactl.primazamain.maincluster import MainCluster
 
 
 def add_uninstall(parser: argparse.ArgumentParser, parents=[]):
@@ -17,13 +17,13 @@ def add_uninstall(parser: argparse.ArgumentParser, parents=[]):
 def uninstall_primaza(args):
     validate(args)
     try:
-        PrimazaMain(
+        MainCluster(
             args.cluster_name,
             args.kubeconfig,
             args.config,
             args.version).uninstall_primaza()
+        print("Primaza main successfully uninstalled")
     except Exception as e:
         print(traceback.format_exc())
         print(f"\nAn exception occurred executing main install: {e}",
               file=sys.stderr)
-    print("Primaza main successfully uninstalled")

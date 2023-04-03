@@ -2,23 +2,23 @@ from kubernetes import client
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 from primazactl.utils import logger
 from primazactl.utils.primazaconfig import PrimazaConfig
-from primazactl.primazamain.primazamain import PrimazaMain
+from primazactl.primazamain.maincluster import MainCluster
 from .constants import WORKER_NAMESPACE, WORKER_ID
-from primazactl.primaza.primaza import Primaza
+from primazactl.primaza.primazacluster import PrimazaCluster
 
 
-class PrimazaWorker(Primaza):
+class WorkerCluster(PrimazaCluster):
     kube_config_file: str = None
     kubeconfig: KubeConfigWrapper = None
     config_file: str = None
     version: str = None
     environment: str = None
     cluster_environment: str = None
-    primaza_main: PrimazaMain = None
+    primaza_main: MainCluster = None
 
     def __init__(
         self,
-        primaza_main: PrimazaMain,
+        primaza_main: MainCluster,
         cluster_name: str,
         kubeconfig_file: str,
         config_file: str,
@@ -40,7 +40,7 @@ class PrimazaWorker(Primaza):
         kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
         self.kubeconfig = kcw.get_kube_config_for_cluster()
 
-        logger.log_info("PrimazaWorker created for cluster "
+        logger.log_info("WorkerCluster created for cluster "
                         f"{self.cluster_name}")
 
     def install_worker(self):
@@ -106,3 +106,23 @@ class PrimazaWorker(Primaza):
         if err != 0:
             raise RuntimeError("error deploying Primaza's CRDs into "
                                f"cluster {self.cluster_name} : {err}\n")
+
+    def check(self, namespace):
+        # For both namespace types user primaza must be able to perform
+        # the following actions for deploying agents:
+        # - create,update Deployments
+        self.__check_deployment(namespace)
+
+    def __check_deployment(self, namespace):
+        # - create,update Deployments
+        logger.log_entry(f"namespace: {namespace}")
+        # deployment = Deployment(self.kubeconfig.get_api_client(),
+        #                       "primaza-main-namespace-check",
+        #                        namespace)
+        # deployment.create()
+        # try:
+        #     deployment.update()
+        # except Exception as e:
+        #     raise e
+        # finally:
+        #     deployment.delete()

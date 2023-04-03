@@ -1,16 +1,15 @@
-from typing import Tuple
+
 from primazactl.utils import primazaconfig
 from primazactl.utils import logger
 from kubernetes import client
 import polling2
 import yaml
-from primazactl.utils.command import Command
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
-from primazactl.primaza.primaza import Primaza
+from primazactl.primaza.primazacluster import PrimazaCluster
 
 
-class PrimazaMain(Primaza):
+class MainCluster(PrimazaCluster):
     kubeconfig: KubeConfigWrapper = None
     kube_config_file: str
 
@@ -168,13 +167,3 @@ class PrimazaMain(Primaza):
             raise RuntimeError(
                 "error deleting Primaza's controller from "
                 f"cluster {self.cluster_name} : {err}")
-
-    def kubeconfig(self) -> KubeConfigWrapper:
-        return KubeConfigWrapper(self.cluster_name, self.kube_config_file)
-
-    def kubectl_do(self, cmd: str) -> Tuple[str, int]:
-        return Command().run(
-            "kubectl"
-            f" --kubeconfig {self.kube_config_file}"
-            f" --context {self.cluster_name}"
-            f" {cmd}")

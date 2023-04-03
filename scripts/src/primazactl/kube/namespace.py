@@ -26,7 +26,7 @@ class Namespace(object):
                                  "create_namespace: %s\n" % e)
                 raise e
 
-    def read(self) -> str:
+    def read(self) -> client.V1Namespace | None:
         logger.log_entry(f"namespace: {self.name}")
 
         try:
@@ -36,7 +36,7 @@ class Namespace(object):
                 logger.log_error("Exception when calling "
                                  "read_namespace: %s\n" % e)
                 raise e
-        return ""
+        return None
 
     def delete(self):
         logger.log_entry(f"namespace: {self.name}")

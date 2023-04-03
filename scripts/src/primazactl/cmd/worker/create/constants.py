@@ -1,2 +1,2 @@
-SERVICES: str = "services"
-APPLICATIONS: str = "applications"
+SERVICE: str = "service"
+APPLICATION: str = "application"

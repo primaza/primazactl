@@ -27,7 +27,7 @@ class Role(object):
                                  "create_cluster_role: %s\n" % e)
                 raise e
 
-    def read(self) -> str:
+    def read(self) -> client.V1ClusterRole | None:
         logger.log_entry(f"User: {self.user}")
 
         try:
@@ -37,7 +37,7 @@ class Role(object):
                 logger.log_error("Exception when calling "
                                  "read_cluster_role: %s\n" % e)
                 raise e
-        return ""
+        return None
 
     def delete(self):
         logger.log_entry(f"User: {self.user}")
