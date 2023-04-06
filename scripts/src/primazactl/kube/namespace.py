@@ -17,7 +17,15 @@ class Namespace(object):
 
         if not self.read():
             namespace = client.V1Namespace(
-                metadata=client.V1ObjectMeta(name=self.name))
+                metadata=client.V1ObjectMeta(
+                    name=self.name,
+                    labels={"app.kubernetes.io/component": "coreV1",
+                            "app.kubernetes.io/created-by": "primaza",
+                            "app.kubernetes.io/instance": self.name,
+                            "app.kubernetes.io/managed-by": "primazactl",
+                            "app.kubernetes.io/name": "secret",
+                            "app.kubernetes.io/part-of": "primaza"}
+                    ))
 
             try:
                 self.corev1.create_namespace(namespace)

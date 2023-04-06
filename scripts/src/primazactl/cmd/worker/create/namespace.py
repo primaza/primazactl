@@ -76,20 +76,6 @@ def __create_namespace(args, type):
                            config_file=None,
                            version=None,)
 
-        main_user = main.create_primaza_service_account(
-            args.cluster_environment)
-        kcfg = main.get_kubeconfig(main_user, args.cluster_name)
-
-        namespace = WorkerNamespace(type,
-                                    f"primaza-{type}",
-                                    args.cluster_environment,
-                                    args.cluster_name,
-                                    args.main_clustername,
-                                    args.config,
-                                    main_user,
-                                    kcfg)
-        namespace.create()
-
         worker = WorkerCluster(
             primaza_main=main,
             cluster_name=args.cluster_name,
@@ -100,11 +86,21 @@ def __create_namespace(args, type):
             cluster_environment=args.cluster_environment,
         )
 
-        secret_name = f"{WORKER_ID}-{args.cluster_environment}"
-        worker.create_clustercontext_secret(secret_name, kcfg)
-        worker.check(type)
-        namespace.check()
+        main_user = main.create_primaza_service_account(
+            args.cluster_environment)
+        kcfg = main.get_kubeconfig(main_user, args.cluster_name)
 
+        namespace = WorkerNamespace(type,
+                                    f"primaza-{type}",
+                                    args.cluster_environment,
+                                    args.cluster_name,
+                                    args.config,
+                                    main,
+                                    worker)
+        namespace.create()
+
+        secret_name = f"{WORKER_ID}-{args.cluster_environment}"
+        worker.create_namespaced_secret(secret_name, kcfg)
         print(f"{type} namespace was successfully created")
     except Exception:
         print(traceback.format_exc())

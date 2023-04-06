@@ -24,7 +24,16 @@ class Secret(object):
         if not self.read():
             if not secret:
                 secret = client.V1Secret(
-                    metadata=client.V1ObjectMeta(name=self.name),
+                    metadata=client.V1ObjectMeta(
+                        name=self.name,
+                        namespace=self.namespace,
+                        labels={"app.kubernetes.io/component": "coreV1",
+                                "app.kubernetes.io/created-by": "primaza",
+                                "app.kubernetes.io/instance": self.name,
+                                "app.kubernetes.io/managed-by": "primazactl",
+                                "app.kubernetes.io/name": "secret",
+                                "app.kubernetes.io/part-of": "primaza"}
+                        ),
                     string_data={"kubeconfig": self.kubeconfig})
 
             try:

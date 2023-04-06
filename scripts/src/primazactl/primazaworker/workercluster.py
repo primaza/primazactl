@@ -73,7 +73,7 @@ class WorkerCluster(PrimazaCluster):
         secret_name = f"primaza-{self.cluster_environment}-kubeconfig"
         cc_kubeconfig = self.get_kubeconfig(WORKER_ID,
                                             self.primaza_main.cluster_name)
-        self.primaza_main.create_clustercontext_secret(
+        self.primaza_main.create_namespaced_secret(
             secret_name, cc_kubeconfig)
 
         logger.log_info("Create cluster environment in main")
@@ -106,23 +106,3 @@ class WorkerCluster(PrimazaCluster):
         if err != 0:
             raise RuntimeError("error deploying Primaza's CRDs into "
                                f"cluster {self.cluster_name} : {err}\n")
-
-    def check(self, namespace):
-        # For both namespace types user primaza must be able to perform
-        # the following actions for deploying agents:
-        # - create,update Deployments
-        self.__check_deployment(namespace)
-
-    def __check_deployment(self, namespace):
-        # - create,update Deployments
-        logger.log_entry(f"namespace: {namespace}")
-        # deployment = Deployment(self.kubeconfig.get_api_client(),
-        #                       "primaza-main-namespace-check",
-        #                        namespace)
-        # deployment.create()
-        # try:
-        #     deployment.update()
-        # except Exception as e:
-        #     raise e
-        # finally:
-        #     deployment.delete()

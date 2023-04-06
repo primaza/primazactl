@@ -5,33 +5,39 @@ from primazactl.utils import logger
 
 class Role(object):
 
-    user: str = None
-    role: client.V1ClusterRole = None
+    name: str = None
+    role: client.V1Role = None
     rbac: client.RbacAuthorizationV1Api = None
+    namespace: str = None
 
     def __init__(self, api_client: client,
-                 user: str,
-                 role: client.V1ClusterRole):
+                 name: str,
+                 namespace: str,
+                 role: client.V1Role):
         self.rbac = client.RbacAuthorizationV1Api(api_client)
-        self.user = user
+        self.name = name
         self.role = role
+        self.namespace = namespace
 
     def create(self):
-        logger.log_entry(f"User: {self.user}")
+        logger.log_entry(f"User: {self.name}")
 
         if not self.read():
             try:
-                self.rbac.create_cluster_role(self.role)
+                self.rbac.create_namespaced_role(self.namespace,
+                                                 self.role)
             except ApiException as e:
                 logger.log_error("Exception when calling "
                                  "create_cluster_role: %s\n" % e)
                 raise e
+        else:
+            logger.log_info(self.read())
 
     def read(self) -> client.V1ClusterRole | None:
-        logger.log_entry(f"User: {self.user}")
+        logger.log_entry(f"User: {self.name}")
 
         try:
-            return self.rbac.read_cluster_role(self.user)
+            return self.rbac.read_namespaced_role(self.name, self.namespace)
         except ApiException as e:
             if e.reason != "Not Found":
                 logger.log_error("Exception when calling "
@@ -40,10 +46,10 @@ class Role(object):
         return None
 
     def delete(self):
-        logger.log_entry(f"User: {self.user}")
+        logger.log_entry(f"User: {self.name}")
 
         try:
-            return self.rbac.delete_cluster_role(self.user)
+            return self.rbac.delete_namesapced_role(self.name, self.namespace)
         except ApiException as e:
             if e.reason != "Not Found":
                 logger.log_error("Exception when calling "

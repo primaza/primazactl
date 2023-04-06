@@ -67,9 +67,9 @@ class PrimazaCluster(object):
         api_client = self.kubeconfig.get_api_client()
         kubeidentity.create_identity(api_client, self.namespace, self.user)
 
-    def create_clustercontext_secret(self, secret_name: str, kubeconfig: str):
+    def create_namespaced_secret(self, secret_name: str, kubeconfig: str):
         """
-        Creates the Primaza's ClusterContext secret
+        Creates the Primaza's secret
         """
         logger.log_entry(f"secret_name: {secret_name}, "
                          f"namespace: {self.namespace}")

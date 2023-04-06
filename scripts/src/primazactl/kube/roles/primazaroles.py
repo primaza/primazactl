@@ -2,30 +2,18 @@ from kubernetes import client
 from primazactl.utils import logger
 
 
-def get_worker_role(user: str) -> client.V1ClusterRole:
+def get_primaza_namespace_role(user: str, namespace: str) -> client.V1Role:
     logger.log_entry(f"user: {user}")
-    return client.V1ClusterRole(
-        metadata=client.V1ObjectMeta(name=user),
-        rules=[
-            client.V1PolicyRule(
-                api_groups=[""],
-                resources=["pods"],
-                verbs=["list", "get", "create"]),
-            client.V1PolicyRule(
-                api_groups=[""],
-                resources=["secrets"],
-                verbs=["create"]),
-            client.V1PolicyRule(
-                api_groups=["primaza.io/v1alpha1"],
-                resources=["servicebindings"],
-                verbs=["create"]),
-        ])
-
-
-def get_primaza_namespace_role(user: str) -> client.V1ClusterRole:
-    logger.log_entry(f"user: {user}")
-    return client.V1ClusterRole(
-        metadata=client.V1ObjectMeta(name=user),
+    return client.V1Role(
+        metadata=client.V1ObjectMeta(
+            name=user,
+            namespace=namespace,
+            labels={"app.kubernetes.io/component": "coreV1",
+                    "app.kubernetes.io/created-by": "primaza",
+                    "app.kubernetes.io/instance": user,
+                    "app.kubernetes.io/managed-by": "primazactl",
+                    "app.kubernetes.io/name": "rolebinding",
+                    "app.kubernetes.io/part-of": "primaza"}),
         rules=[
             client.V1PolicyRule(
                 api_groups=["apps"],
