@@ -3,7 +3,6 @@ from primazactl.kube.namespace import Namespace
 from primazactl.kube.role import Role
 from primazactl.kube.rolebinding import RoleBinding
 from primazactl.kube.roles.primazaroles import get_primaza_namespace_role
-from primazactl.cmd.worker.create.constants import APPLICATION
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.primazamain.maincluster import MainCluster
 from .workercluster import WorkerCluster
@@ -18,6 +17,7 @@ class WorkerNamespace(PrimazaCluster):
     role_config: str = None
     main: MainCluster = None
     worker: WorkerCluster = None
+    secret_name: str = None
     secret_cfg: str = None
 
     def __init__(self, type,
@@ -40,6 +40,7 @@ class WorkerNamespace(PrimazaCluster):
         self.cluster_environment = cluster_environment
         self.kube_namespace = Namespace(api_client, namespace)
         self.role_config = role_config
+        self.secret_name = "primaza-kubeconfig"
 
     def create(self):
         logger.log_entry(f"namespace type: {self.type}, "
@@ -61,11 +62,7 @@ class WorkerNamespace(PrimazaCluster):
         # - in the created namespace, create the Secret
         #     'primaza-auth-$CLUSTER_ENVIRONMENT' the Worker key
         #     and the kubeconfig for authenticating with the Primaza cluster.
-        if self.type == APPLICATION:
-            secret_name = "primaza-kubeconfig"
-        else:
-            secret_name = "primaza-kubeconfig"
-        self.create_namespaced_secret(secret_name, kc)
+        self.create_namespaced_secret(self.secret_name, kc)
 
         # - In the created namespace, create the Role for the
         #   agent (named for example primaza-application-agent or
