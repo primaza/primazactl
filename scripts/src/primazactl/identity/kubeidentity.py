@@ -4,11 +4,14 @@ from typing import Dict
 from kubernetes import client
 from primazactl.utils import logger
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
+from primazactl.kube.serviceaccount import ServiceAccount
+from primazactl.kube.secret import Secret
 
 
 def get_identity_kubeconfig(
         kubeconfig: KubeConfigWrapper,
         identity: str,
+        namespace: str,
         serverUrl: str | None) -> str:
     """
         Generates the kubeconfig for the Identity (Service Account) `identity`.
@@ -25,7 +28,7 @@ def get_identity_kubeconfig(
     logger.log_entry(f"csr name: {identity}")
 
     api_client = kubeconfig.get_api_client()
-    idauth = get_identity_token(api_client, identity)
+    idauth = get_identity_token(api_client, identity, namespace)
 
     kcw = kubeconfig.get_kube_config_for_cluster()
     kcd = kcw.get_kube_config_content_as_yaml()
@@ -36,7 +39,7 @@ def get_identity_kubeconfig(
     if serverUrl is not None:
         kcd["clusters"][0]["cluster"]["server"] = serverUrl
 
-    logger.log_info(f"kubeconfig:\n{yaml.dump(kcd)}")
+    # logger.log_info(f"kubeconfig:\n{yaml.dump(kcd)}")
 
     return yaml.dump(kcd)
 
@@ -44,6 +47,7 @@ def get_identity_kubeconfig(
 def get_identity_token(
         api_client: client.ApiClient,
         identity: str,
+        namespace: str,
         timeout: int = 60) -> Dict[str, str]:
     """
         Retrieves the Identity's token: the data in the Service Account's
@@ -59,12 +63,13 @@ def get_identity_token(
         :return token: A dictionary with Secret data: token, ca.crt,
                         and namespace
     """
+    logger.log_entry(f"identity: {identity}")
     corev1 = client.CoreV1Api(api_client)
 
     secret = polling2.poll(
         target=lambda: corev1.read_namespaced_secret(
             name=f"{identity}-key",
-            namespace="kube-system"),
+            namespace=namespace),
         check_success=lambda x:
         x.data is not None and x.data["token"] is not None,
         step=1,
@@ -87,15 +92,13 @@ def create_identity(
         :type namespace: str
         :param namespace: Namespace where to create the identity
     """
-    corev1 = client.CoreV1Api(api_client)
+    logger.log_entry(f"identity: {identity}")
 
-    sa = client.V1ServiceAccount(
-        metadata=client.V1ObjectMeta(name=identity))
-    corev1.create_namespaced_service_account(namespace, sa)
+    service_account = ServiceAccount(api_client,
+                                     identity, namespace)
+    service_account.create()
+    sa = service_account.read()
 
-    sa = corev1.read_namespaced_service_account(
-        name=identity,
-        namespace=namespace)
     ownership = client.V1OwnerReference(
         api_version=sa.api_version,
         kind=sa.kind,
@@ -112,4 +115,5 @@ def create_identity(
             },
         ),
         type="kubernetes.io/service-account-token",)
-    corev1.create_namespaced_secret(namespace, id_key)
+    secret = Secret(api_client, f"{identity}-key", namespace, None)
+    secret.create(id_key)

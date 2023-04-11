@@ -111,7 +111,7 @@ def test_args(venv_dir):
             "non-existent-cluster",
             "--config",
             "out/config/primaza_config_latest.yaml"]
-    expect_error_msg = "error: error deploying Primaza's controller" \
+    expect_error_msg = "error deploying Primaza's controller" \
                        " into cluster non-existent-cluster"
     fail_msg = "unexpected response to bad cluster"
     outcome = outcome & run_and_check(venv_dir, args, None,
@@ -126,15 +126,14 @@ def test_main_install(venv_dir, config, cluster):
                "main",
                "install",
                "-f", config,
-               "-c", cluster,
-               "-x"]
+               "-c", cluster]
     out, err = run_cmd(command)
 
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False
 
-    if "Install and configure primaza completed" not in out:
+    if "Primaza main installed" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
@@ -184,8 +183,7 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster):
                "-d", "primaza-environment",
                "-f", config,
                "-c", worker_cluster,
-               "-m", main_cluster,
-               "-x"]
+               "-m", main_cluster]
 
     out, err = run_cmd(command)
     if err:
@@ -197,6 +195,52 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster):
         return False
 
     print(f"[{PASS}] Worker joined\n\n{out}")
+    return True
+
+
+def test_application_namespace_create(venv_dir, worker_cluster,
+                                      main_cluster, config):
+
+    command = [f"{venv_dir}/bin/primazactl",
+               "worker", "create", "application-namespace",
+               "-d", "primaza-environment",
+               "-c", worker_cluster,
+               "-m", main_cluster,
+               "-f", config]
+
+    out, err = run_cmd(command)
+    if err:
+        print(f"[{FAIL}] Unexpected error response: {err}")
+        return False
+
+    if "application namespace was successfully created" not in out:
+        print(f"[{FAIL}] Unexpected response: {out}")
+        return False
+
+    print(f"[{PASS}] Application namespace created\n\n{out}")
+    return True
+
+
+def test_service_namespace_create(venv_dir, worker_cluster,
+                                  main_cluster, config):
+
+    command = [f"{venv_dir}/bin/primazactl",
+               "worker", "create", "service-namespace",
+               "-d", "primaza-environment",
+               "-c", worker_cluster,
+               "-m", main_cluster,
+               "-f", config]
+
+    out, err = run_cmd(command)
+    if err:
+        print(f"[{FAIL}] Unexpected error response: {err}")
+        return False
+
+    if "service namespace was successfully created" not in out:
+        print(f"[{FAIL}] Unexpected response: {out}")
+        return False
+
+    print(f"[{PASS}] Application namespace created\n\n{out}")
     return True
 
 
@@ -225,6 +269,12 @@ def main():
                         help="name of cluster, as it appears in kubeconfig, "
                              "on which main is installed. "
                              "Defaults to worker install cluster.")
+    parser.add_argument("-a", "--application_config",
+                        dest="app_config", type=str, required=True,
+                        help="application namespace config file.")
+    parser.add_argument("-s", "--service_config",
+                        dest="service_config", type=str, required=True,
+                        help="service namespace config file.")
 
     args = parser.parse_args()
 
@@ -235,6 +285,17 @@ def main():
                                             args.worker_config,
                                             args.worker_cluster_name,
                                             args.main_cluster_name)
+    outcome = outcome & test_application_namespace_create(
+        args.venv_dir,
+        args.worker_cluster_name,
+        args.main_cluster_name,
+        args.app_config)
+    outcome = outcome & test_service_namespace_create(
+        args.venv_dir,
+        args.worker_cluster_name,
+        args.main_cluster_name,
+        args.service_config)
+
     if outcome:
         print("[SUCCESS] All tests passed")
     else:

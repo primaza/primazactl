@@ -1,81 +1,47 @@
-import yaml
-from typing import Dict
 from kubernetes import client
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
-from primazactl.identity import kubeidentity
-from primazactl.utils import logger, command
+from primazactl.utils import logger
 from primazactl.utils.primazaconfig import PrimazaConfig
-from primazactl.primazamain.primazamain import PrimazaMain
+from primazactl.primazamain.maincluster import MainCluster
+from .constants import WORKER_NAMESPACE, WORKER_ID
+from primazactl.primaza.primazacluster import PrimazaCluster
 
 
-class PrimazaWorker(object):
-    cluster_name: str = None
+class WorkerCluster(PrimazaCluster):
     kube_config_file: str = None
     kubeconfig: KubeConfigWrapper = None
     config_file: str = None
     version: str = None
     environment: str = None
     cluster_environment: str = None
-    primaza_main: PrimazaMain = None
+    primaza_main: MainCluster = None
 
     def __init__(
         self,
-        primaza_main: PrimazaMain,
+        primaza_main: MainCluster,
         cluster_name: str,
         kubeconfig_file: str,
         config_file: str,
         version: str,
         environment: str,
-        cluster_environment: str,
+        cluster_environment: str
     ):
+        super().__init__(WORKER_NAMESPACE,
+                         cluster_name,
+                         WORKER_ID,
+                         kubeconfig_file)
+
         self.primaza_main = primaza_main
-        self.cluster_name = cluster_name
         self.config_file = config_file
         self.environment = environment
         self.cluster_environment = cluster_environment
         self.version = version
 
-        kcw = KubeConfigWrapper(cluster_name, kubeconfig_file)
+        kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
         self.kubeconfig = kcw.get_kube_config_for_cluster()
 
-        logger.log_info("PrimazaWorker created for cluster "
+        logger.log_info("WorkerCluster created for cluster "
                         f"{self.cluster_name}")
-
-    def create_primaza_service_account(self):
-        namespace = "kube-system"
-        id = "primaza"
-
-        api_client = self.kubeconfig.get_api_client()
-        kubeidentity.create_identity(api_client, namespace, id)
-
-    def get_kubeconfig(self, id: str) -> Dict:
-        serverUrl = self.get_updated_server_url()\
-            if self.cluster_name != self.primaza_main.cluster_name \
-            else None
-
-        return kubeidentity.get_identity_kubeconfig(
-            self.kubeconfig,
-            id,
-            serverUrl)
-
-    def get_updated_server_url(self):
-        logger.log_entry()
-        cluster = f'{self.cluster_name.replace("kind-","")}'
-        control_plane = f'{cluster}-control-plane'
-        out, err = command.Command().run(f"docker inspect {control_plane}")
-        if err != 0:
-            raise RuntimeError("\n[ERROR] error getting data from docker:"
-                               f"{self.cluster_name}-control-plane : {err}")
-
-        docker_data = yaml.safe_load(out)
-        try:
-            networks = docker_data[0]["NetworkSettings"]["Networks"]
-            ipaddr = networks["kind"]["IPAddress"]
-            logger.log_info(f"new worker url: https://{ipaddr}:6443")
-            return f"https://{ipaddr}:6443"
-        except KeyError:
-            logger.log_info("new worker url not found")
-            return ""
 
     def install_worker(self):
         logger.log_entry()
@@ -85,7 +51,8 @@ class PrimazaWorker(object):
         corev1 = client.CoreV1Api(api_client)
         api_response = corev1.list_namespace()
         for item in api_response.items:
-            print(f"Namespace: {item.metadata.name} is {item.status.phase}")
+            logger.log_info(f"Namespace: {item.metadata.name} is "
+                            f"make lint{item.status.phase}")
 
         if not self.cluster_name:
             self.cluster_name = self.kubeconfig.get_cluster_name()
@@ -99,12 +66,14 @@ class PrimazaWorker(object):
         self.install_crd()
 
         logger.log_info("Create certificate signing request")
-        self.create_primaza_service_account()
+
+        self.create_service_account()
 
         logger.log_info("Create cluster context secret in main")
         secret_name = f"primaza-{self.cluster_environment}-kubeconfig"
-        cc_kubeconfig = self.get_kubeconfig("primaza")
-        self.primaza_main.create_clustercontext_secret(
+        cc_kubeconfig = self.get_kubeconfig(WORKER_ID,
+                                            self.primaza_main.cluster_name)
+        self.primaza_main.create_namespaced_secret(
             secret_name, cc_kubeconfig)
 
         logger.log_info("Create cluster environment in main")

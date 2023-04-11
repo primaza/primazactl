@@ -10,14 +10,14 @@ VERSION ?= 0.0.1
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
-IMG ?= quay.io/mmulholl/primaza-main-controllers:latest
-#
+IMG ?= ghcr.io/primaza/primaza:latest
+IMG_APP ?= ghcr.io/primaza/primaza-agentapp:latest
+IMG_SVC ?= ghcr.io/primaza/primaza-agentsvc:latest
 
-IMG ?= controller:latest
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 PRIMAZA_REPO = https://github.com/primaza/primaza.git
-PRIMAZA_BRANCH = main
+PRIMAZA_BRANCH ?= main
 
 .PHONY: all
 all: lint test
@@ -80,8 +80,13 @@ PRIMAZA_CONFIG_DIR ?= $(OUTPUT_DIR)/config
 $(PRIMAZA_CONFIG_DIR):
 	mkdir -p $(PRIMAZA_CONFIG_DIR)
 
+APPLICATION_NAMESPACE ?= primaza-application
+SERVICE_NAMESPACE ?= primaza-service
+
 PRIMAZA_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/primaza_config_latest.yaml
 WORKER_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/worker_config_latest.yaml
+APPLICATION_AGENT_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/application_agent_config_latest.yaml
+SERVICE_AGENT_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/service_agent_config_latest.yaml
 
 KIND_CONFIG_DIR ?= $(SCRIPTS_DIR)/src/primazatest/config
 MAIN_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-main.yaml
@@ -111,15 +116,33 @@ manifests: clone controller-gen ## Generate WebhookConfiguration, ClusterRole an
 	cd $(TEMP_DIR) && $(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: config
-config: clone manifests kustomize $(PRIMAZA_CONFIG_DIR) ## Get config files from primaza repo.
+config: clone manifests kustomize $(PRIMAZA_CONFIG_DIR) application_agent_config service_agent_config ## Get config files from primaza repo.
 	-rm $(PRIMAZA_CONFIG_FILE)
+	-rm $(WORKER_CONFIG_FILE)
 	cd $(TEMP_DIR)/config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/default > $(PRIMAZA_CONFIG_FILE)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/crd > $(WORKER_CONFIG_FILE)
 
+.PHONY: application_agent_config
+application_agent_config: clone
+	-rm $(APPLICATION_AGENT_CONFIG_FILE)
+	#cd $(TEMP_DIR)/config/agents/app && $(KUSTOMIZE) edit set image controller=$(IMG_APP)
+	cd $(TEMP_DIR)/config/agents/app/rbac && $(KUSTOMIZE) edit set namespace $(APPLICATION_NAMESPACE)
+	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/app/rbac > $(APPLICATION_AGENT_CONFIG_FILE)
+
+.PHONY: service_agent_config
+service_agent_config: clone
+	-rm $(SERVICE_AGENT_CONFIG_FILE)
+	#cd $(TEMP_DIR)/config/agents/app && $(KUSTOMIZE) edit set image controller=$(IMG_SVC)
+	cd $(TEMP_DIR)/config/agents/svc && $(KUSTOMIZE) edit set namespace $(SERVICE_NAMESPACE)
+	cd $(TEMP_DIR)/config/agents/svc && $(KUSTOMIZE) edit remove resource agentsvc.yaml
+	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/svc --load-restrictor LoadRestrictionsNone > $(SERVICE_AGENT_CONFIG_FILE)
+
 .PHONY: image
 image:
 	docker pull $(IMG)
+	docker pull $(IMG_APP)
+	docker pull $(IMG_SVC)
 
 .PHONY: kind-clusters
 kind-clusters: config image
@@ -134,8 +157,7 @@ kind-clusters: config image
 	kubectl rollout status -n cert-manager deploy/cert-manager-webhook -w --timeout=120s
 
 .PHONY: setup-test
-setup-test: clean image kind-clusters primazactl config create-key
-
+setup-test: clean image primazactl config kind-clusters
 
 .PHONY: clone
 clone: clean-temp
@@ -150,6 +172,7 @@ primazactl: ## Setup virtual environment
 	$(PYTHON_VENV_DIR)/bin/pip install --upgrade pip
 	cd $(SCRIPTS_DIR) && $(PYTHON_VENV_DIR)/bin/pip3 install -r requirements.txt
 	cd $(SCRIPTS_DIR) && $(PYTHON_VENV_DIR)/bin/python3 setup.py install
+	source $(PYTHON_VENV_DIR)/bin/activate
 
 .PHONY: single-binary
 single-binary: ## Release primazactl as single binary
@@ -169,14 +192,9 @@ single-binary: ## Release primazactl as single binary
 lint: primazactl ## Check python code
 	PYTHON_VENV_DIR=$(PYTHON_VENV_DIR) $(HACK_DIR)/check-python/lint-python-code.sh
 
-.PHONY: create-key
-create-key: primazactl
-	-rm -f $(KEY_FILE)
-	$(PYTHON_VENV_DIR)/bin/rsakey $(KEY_FILE)
-
 .PHONY: test
 test: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -v $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -m $(KUBE_KIND_CLUSTER_MAIN_NAME)
+	$(PYTHON_VENV_DIR)/bin/primazatest -v $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -m $(KUBE_KIND_CLUSTER_MAIN_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
 
 .PHONY: clean-temp
 clean-temp:
