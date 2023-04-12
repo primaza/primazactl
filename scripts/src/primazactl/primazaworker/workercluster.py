@@ -67,11 +67,11 @@ class WorkerCluster(PrimazaCluster):
 
         logger.log_info("Create certificate signing request")
 
-        self.create_service_account()
+        identity = self.create_identity()
 
         logger.log_info("Create cluster context secret in main")
         secret_name = f"primaza-{self.cluster_environment}-kubeconfig"
-        cc_kubeconfig = self.get_kubeconfig(WORKER_ID,
+        cc_kubeconfig = self.get_kubeconfig(identity,
                                             self.primaza_main.cluster_name)
         self.primaza_main.create_namespaced_secret(
             secret_name, cc_kubeconfig)
@@ -106,3 +106,8 @@ class WorkerCluster(PrimazaCluster):
         if err != 0:
             raise RuntimeError("error deploying Primaza's CRDs into "
                                f"cluster {self.cluster_name} : {err}\n")
+
+    def check_worker_roles(self, role_name, role_namespace):
+        return self.check_service_account_roles(self.user,
+                                                role_name,
+                                                role_namespace)

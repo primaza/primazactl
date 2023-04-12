@@ -5,6 +5,7 @@ from primazactl.kube.rolebinding import RoleBinding
 from primazactl.kube.roles.primazaroles import get_primaza_namespace_role
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.primazamain.maincluster import MainCluster
+from primazactl.cmd.worker.create.constants import APPLICATION
 from .workercluster import WorkerCluster
 
 
@@ -12,7 +13,7 @@ class WorkerNamespace(PrimazaCluster):
 
     main_cluster: str = None
     type: str = None
-    kube_namesapce: Namespace = None
+    kube_namespace: Namespace = None
     cluster_environment: str = None
     role_config: str = None
     main: MainCluster = None
@@ -52,12 +53,12 @@ class WorkerNamespace(PrimazaCluster):
         self.kube_namespace.create()
 
         # Request a new service account from primaza main
-        sa_name = self.main.create_primaza_service_account(
+        main_identity = self.main.create_primaza_identity(
             self.cluster_environment,
             self.type)
 
         # Get kubeconfig with secret from service accounf
-        kc = self.main.get_kubeconfig(sa_name, self.cluster_name)
+        kc = self.main.get_kubeconfig(main_identity, self.cluster_name)
 
         # - in the created namespace, create the Secret
         #     'primaza-auth-$CLUSTER_ENVIRONMENT' the Worker key
@@ -93,6 +94,38 @@ class WorkerNamespace(PrimazaCluster):
                                       self.worker.namespace,
                                       self.worker.user)
         primaza_binding.create()
+
+    def check(self):
+
+        error_messages = []
+        if self.type == APPLICATION:
+            error_message = self.check_service_account_roles(
+                "primaza-controller-agentapp",
+                "agentapp-role", self.namespace)
+            if error_message:
+                error_messages.extend(error_message)
+        else:
+            error_message = self.check_service_account_roles(
+                "primaza-controller-agentsvc",
+                "leader-election-role", self.namespace)
+            if error_message:
+                error_messages.extend(error_message)
+
+            error_message = self.check_service_account_roles(
+                "primaza-controller-agentsvc",
+                "manager-role", self.namespace)
+            if error_message:
+                error_messages.extend(error_message)
+
+        role = f"{self.worker.user}-{self.type}-role"
+        error_message = self.worker.check_worker_roles(role, self.namespace)
+        if error_message:
+            error_messages.extend(error_message)
+
+        if error_messages:
+            raise RuntimeError(
+                "Error: namespace install has failed to created the correct "
+                f"accesses. Error messages were: {error_messages}")
 
     def install_roles(self):
         logger.log_entry(f"config: {self.role_config}")
