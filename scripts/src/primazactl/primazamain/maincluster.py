@@ -8,6 +8,7 @@ from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.cmd.worker.create.constants import APPLICATION, SERVICE
+from primazactl.identity.kubeidentity import KubeIdentity
 
 
 class MainCluster(PrimazaCluster):
@@ -53,16 +54,15 @@ class MainCluster(PrimazaCluster):
                 "error deploying Primaza's controller into "
                 f"cluster {self.cluster_name}")
 
-    def create_primaza_service_account(self, cluster_environment: str,
-                                       type: str = None) -> str:
+    def create_primaza_identity(self, cluster_environment: str,
+                                type: str = None) -> KubeIdentity:
         logger.log_entry(f"type: {type} environment: {cluster_environment}")
         if type == APPLICATION or type == SERVICE:
             sa_name = f"primaza-{type}-{cluster_environment}-sa"
         else:
             sa_name = f"primaza-{cluster_environment}-{self.namespace}-sa"
 
-        self.create_service_account(sa_name)
-        return sa_name
+        return self.create_identity(sa_name)
 
     def write_resource(self, resource, kcw=None):
         logger.log_entry()

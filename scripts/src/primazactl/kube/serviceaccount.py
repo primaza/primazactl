@@ -38,7 +38,6 @@ class ServiceAccount(object):
             try:
                 self.corev1.create_namespaced_service_account(
                     self.namespace, sa)
-                logger.log_info(self.read())
             except ApiException as e:
                 logger.log_error("Exception when calling "
                                  "create_namespaced_service_account: %s\n" % e)
@@ -69,25 +68,6 @@ class ServiceAccount(object):
             self.corev1.delete_namespaced_service_account(
                 name=self.identity,
                 namespace=self.namespace)
-        except ApiException as e:
-            if e.reason != "Not Found":
-                logger.log_error("Exception when calling "
-                                 "delete_namespaced_service_account: "
-                                 "%s\n" % e)
-                raise e
-
-    def create_token(self):
-        logger.log_entry(f"Identity: {self.identity}, "
-                         f"namespace: {self.namespace}")
-
-        try:
-            body = client.AuthenticationV1TokenRequest()
-
-            response = self.corev1.create_namespaced_service_account_token(
-                name=self.identity,
-                namespace=self.namespace,
-                body=body)
-            logger.log_info(response)
         except ApiException as e:
             if e.reason != "Not Found":
                 logger.log_error("Exception when calling "

@@ -55,3 +55,10 @@ class Role(object):
                 logger.log_error("Exception when calling "
                                  "delete_cluster_role: %s\n" % e)
                 raise e
+
+    def get_rules(self):
+        logger.log_entry(f"User: {self.name}")
+        policy = self.read()
+        if policy:
+            return policy.rules
+        return None

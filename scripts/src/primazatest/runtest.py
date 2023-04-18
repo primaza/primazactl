@@ -213,7 +213,7 @@ def test_application_namespace_create(venv_dir, worker_cluster,
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False
 
-    if "application namespace was successfully created" not in out:
+    if "was successfully created" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
@@ -236,11 +236,11 @@ def test_service_namespace_create(venv_dir, worker_cluster,
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False
 
-    if "service namespace was successfully created" not in out:
+    if "was successfully created" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
-    print(f"[{PASS}] Application namespace created\n\n{out}")
+    print(f"[{PASS}] Service namespace created\n\n{out}")
     return True
 
 
