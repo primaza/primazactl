@@ -137,11 +137,20 @@ def test_main_install(venv_dir, config, cluster):
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
+    if not check_pods(cluster, "primaza-system"):
+        print(f"[{FAIL}] main install pod is not running: {out}")
+        return False
+
+    print(f"[{PASS}] main install was successful.")
+    return True
+
+
+def check_pods(cluster, namespace):
     outcome = True
     for i in range(1, 60):
 
         pods, err = run_cmd(["kubectl", "get", "pods", "-n",
-                            "primaza-system", "--context",
+                             namespace, "--context",
                              cluster], 1 < i < 60)
 
         if pods:
@@ -165,7 +174,7 @@ def test_main_install(venv_dir, config, cluster):
     if not outcome:
         time.sleep(5)
         pods, err = run_cmd(["kubectl", "describe",
-                             "pods", "-n", "primaza-system",
+                             "pods", "-n", namespace,
                              "--context", cluster])
         if pods:
             print(pods)
@@ -194,7 +203,6 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster):
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
-    print(f"[{PASS}] Worker joined\n\n{out}")
     return True
 
 
@@ -215,6 +223,10 @@ def test_application_namespace_create(venv_dir, worker_cluster,
 
     if "was successfully created" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
+        return False
+
+    if not check_pods(worker_cluster, "primaza-application"):
+        print(f"[{FAIL}] application namespace pod is not running!\n\n{out}")
         return False
 
     print(f"[{PASS}] Application namespace created\n\n{out}")
@@ -238,6 +250,10 @@ def test_service_namespace_create(venv_dir, worker_cluster,
 
     if "was successfully created" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
+        return False
+
+    if not check_pods(worker_cluster, "primaza-service"):
+        print(f"[{FAIL}] service namespace pod is not running!\n\n{out}")
         return False
 
     print(f"[{PASS}] Service namespace created\n\n{out}")

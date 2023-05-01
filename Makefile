@@ -13,6 +13,8 @@ SHELL = /usr/bin/env bash -o pipefail
 IMG ?= ghcr.io/primaza/primaza:latest
 IMG_APP ?= ghcr.io/primaza/primaza-agentapp:latest
 IMG_SVC ?= ghcr.io/primaza/primaza-agentsvc:latest
+IMG_APP_LOCAL ?= agentapp:latest
+IMG_SVC_LOCAL ?= agentsvc:latest
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -126,14 +128,12 @@ config: clone manifests kustomize $(PRIMAZA_CONFIG_DIR) application_agent_config
 .PHONY: application_agent_config
 application_agent_config: clone
 	-rm $(APPLICATION_AGENT_CONFIG_FILE)
-	#cd $(TEMP_DIR)/config/agents/app && $(KUSTOMIZE) edit set image controller=$(IMG_APP)
 	cd $(TEMP_DIR)/config/agents/app/rbac && $(KUSTOMIZE) edit set namespace $(APPLICATION_NAMESPACE)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/app/rbac > $(APPLICATION_AGENT_CONFIG_FILE)
 
 .PHONY: service_agent_config
 service_agent_config: clone
 	-rm $(SERVICE_AGENT_CONFIG_FILE)
-	#cd $(TEMP_DIR)/config/agents/app && $(KUSTOMIZE) edit set image controller=$(IMG_SVC)
 	cd $(TEMP_DIR)/config/agents/svc && $(KUSTOMIZE) edit set namespace $(SERVICE_NAMESPACE)
 	cd $(TEMP_DIR)/config/agents/svc && $(KUSTOMIZE) edit remove resource agentsvc.yaml
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/svc --load-restrictor LoadRestrictionsNone > $(SERVICE_AGENT_CONFIG_FILE)
@@ -142,7 +142,9 @@ service_agent_config: clone
 image:
 	docker pull $(IMG)
 	docker pull $(IMG_APP)
+	docker tag $(IMG_APP) $(IMG_APP_LOCAL)
 	docker pull $(IMG_SVC)
+	docker tag $(IMG_SVC) $(IMG_SVC_LOCAL)
 
 .PHONY: kind-clusters
 kind-clusters: config image
@@ -155,6 +157,8 @@ kind-clusters: config image
 	kind create cluster --config $(WORKER_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_WORKER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 	kubectl rollout status -n cert-manager deploy/cert-manager-webhook -w --timeout=120s
+	kind load docker-image $(IMG_APP_LOCAL) --name $(KIND_CLUSTER_WORKER_NAME)
+	kind load docker-image $(IMG_SVC_LOCAL) --name $(KIND_CLUSTER_WORKER_NAME)
 
 .PHONY: setup-test
 setup-test: clean image primazactl config kind-clusters
@@ -210,3 +214,5 @@ clean: clean-temp
 	rm -rf $(LOCALBIN)
 	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
 	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
+	-docker image rm $(IMG_APP_LOCAL)
+	-docker image rm $(IMG_SVC_LOCAL)

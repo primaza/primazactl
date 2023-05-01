@@ -95,7 +95,12 @@ class WorkerNamespace(PrimazaCluster):
                                       self.worker.user)
         primaza_binding.create()
 
+        ce = self.main.get_cluster_environment()
+        ce.add_namespace(self.type, self.namespace)
+        logger.log_info(f"ce:{ce.body}")
+
     def check(self):
+        logger.log_entry()
 
         error_messages = []
         if self.type == APPLICATION:
@@ -126,6 +131,11 @@ class WorkerNamespace(PrimazaCluster):
             raise RuntimeError(
                 "Error: namespace install has failed to created the correct "
                 f"accesses. Error messages were: {error_messages}")
+
+        ce = self.main.get_cluster_environment()
+        ce.check("Online", "Online", "True")
+
+        logger.log_exit("All checks passed")
 
     def install_roles(self):
         logger.log_entry(f"config: {self.role_config}")

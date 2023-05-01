@@ -77,21 +77,9 @@ class WorkerCluster(PrimazaCluster):
             secret_name, cc_kubeconfig)
 
         logger.log_info("Create cluster environment in main")
-        self.primaza_main.write_cluster_environment(
+        ce = self.primaza_main.create_cluster_environment(
             self.cluster_environment, self.environment, secret_name)
-
-        self.primaza_main.check_state(
-            self.cluster_environment, "Online")
-        self.primaza_main.check_status_condition(
-            self.cluster_environment, "Online", "True")
-        self.primaza_main.check_status_condition(
-            self.cluster_environment,
-            "ApplicationNamespacePermissionsRequired",
-            "False")
-        self.primaza_main.check_status_condition(
-            self.cluster_environment,
-            "ServiceNamespacePermissionsRequired",
-            "False")
+        ce.check("Online", "Online", "True")
 
         logger.log_exit("Worker install complete")
 
