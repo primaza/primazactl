@@ -1,10 +1,10 @@
 from kubernetes import client
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 from primazactl.utils import logger
-from primazactl.utils.primazaconfig import PrimazaConfig
 from primazactl.primazamain.maincluster import MainCluster
 from .constants import WORKER_NAMESPACE, WORKER_ID
 from primazactl.primaza.primazacluster import PrimazaCluster
+from primazactl.utils import names
 
 
 class WorkerCluster(PrimazaCluster):
@@ -17,31 +17,34 @@ class WorkerCluster(PrimazaCluster):
     primaza_main: MainCluster = None
 
     def __init__(
-        self,
-        primaza_main: MainCluster,
-        cluster_name: str,
-        kubeconfig_file: str,
-        config_file: str,
-        version: str,
-        environment: str,
-        cluster_environment: str
-    ):
+            self,
+            primaza_main: MainCluster,
+            cluster_name: str,
+            kubeconfig_file: str,
+            config_file: str,
+            version: str,
+            environment: str,
+            cluster_environment: str
+            ):
+
         super().__init__(WORKER_NAMESPACE,
                          cluster_name,
                          WORKER_ID,
-                         kubeconfig_file)
+                         cluster_environment,
+                         kubeconfig_file,
+                         config_file,
+                         cluster_environment)
 
         self.primaza_main = primaza_main
-        self.config_file = config_file
         self.environment = environment
-        self.cluster_environment = cluster_environment
         self.version = version
 
         kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
         self.kubeconfig = kcw.get_kube_config_for_cluster()
 
         logger.log_info("WorkerCluster created for cluster "
-                        f"{self.cluster_name}")
+                        f"{self.cluster_name}, config_file: "
+                        f"{self.config_file}")
 
     def install_worker(self):
         logger.log_entry()
@@ -67,16 +70,19 @@ class WorkerCluster(PrimazaCluster):
 
         logger.log_info("Create certificate signing request")
 
-        identity = self.create_identity()
+        sa_name, key_name = names.get_identity_names(self.cluster_environment,
+                                                     self.namespace)
+
+        identity = self.create_identity(sa_name, key_name)
 
         logger.log_info("Create cluster context secret in main")
-        secret_name = f"primaza-{self.cluster_environment}-kubeconfig"
         cc_kubeconfig = self.get_kubeconfig(identity,
                                             self.primaza_main.cluster_name)
-        self.primaza_main.create_namespaced_secret(
-            secret_name, cc_kubeconfig)
+        secret_name = self.primaza_main.create_namespaced_secret(
+            cc_kubeconfig, self.cluster_environment)
 
         logger.log_info("Create cluster environment in main")
+
         ce = self.primaza_main.create_cluster_environment(
             self.cluster_environment, self.environment, secret_name)
         ce.check("Online", "Online", "True")
@@ -84,16 +90,8 @@ class WorkerCluster(PrimazaCluster):
         logger.log_exit("Worker install complete")
 
     def install_crd(self):
-        logger.log_entry()
-
-        config = PrimazaConfig("worker",
-                               self.config_file,
-                               self.version)
-
-        err = config.apply(self.kubeconfig)
-        if err != 0:
-            raise RuntimeError("error deploying Primaza's CRDs into "
-                               f"cluster {self.cluster_name} : {err}\n")
+        logger.log_entry(f"config: {self.config_file}")
+        self.install_config()
 
     def check_worker_roles(self, role_name, role_namespace):
         return self.check_service_account_roles(self.user,

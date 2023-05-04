@@ -111,8 +111,8 @@ def test_args(venv_dir):
             "non-existent-cluster",
             "--config",
             "out/config/primaza_config_latest.yaml"]
-    expect_error_msg = "error deploying Primaza's controller" \
-                       " into cluster non-existent-cluster"
+    expect_error_msg = "error deploying Primaza's controller into cluster " \
+                       "non-existent-cluster"
     fail_msg = "unexpected response to bad cluster"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
@@ -120,13 +120,14 @@ def test_args(venv_dir):
     return outcome
 
 
-def test_main_install(venv_dir, config, cluster):
+def test_main_install(venv_dir, config, cluster, namespace):
 
     command = [f"{venv_dir}/bin/primazactl",
                "main",
                "install",
                "-f", config,
-               "-c", cluster]
+               "-c", cluster,
+               "-n", namespace]
     out, err = run_cmd(command)
 
     if err:
@@ -137,11 +138,11 @@ def test_main_install(venv_dir, config, cluster):
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
-    if not check_pods(cluster, "primaza-system"):
+    if not check_pods(cluster, namespace):
         print(f"[{FAIL}] main install pod is not running: {out}")
         return False
 
-    print(f"[{PASS}] main install was successful.")
+    print(f"[{PASS}] main installed.")
     return True
 
 
@@ -184,7 +185,8 @@ def check_pods(cluster, namespace):
     return outcome
 
 
-def test_worker_install(venv_dir, config, worker_cluster, main_cluster):
+def test_worker_install(venv_dir, config, worker_cluster,
+                        main_cluster, main_namespace):
 
     command = [f"{venv_dir}/bin/primazactl",
                "worker", "join",
@@ -192,7 +194,8 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster):
                "-d", "primaza-environment",
                "-f", config,
                "-c", worker_cluster,
-               "-m", main_cluster]
+               "-m", main_cluster,
+               "-s", main_namespace]
 
     out, err = run_cmd(command)
     if err:
@@ -203,18 +206,23 @@ def test_worker_install(venv_dir, config, worker_cluster, main_cluster):
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
+    print(f"[{PASS}] Worker joined\n\n{out}")
     return True
 
 
-def test_application_namespace_create(venv_dir, worker_cluster,
-                                      main_cluster, config):
+def test_application_namespace_create(venv_dir, namespace,
+                                      worker_cluster,
+                                      main_cluster, main_namespace,
+                                      config):
 
     command = [f"{venv_dir}/bin/primazactl",
                "worker", "create", "application-namespace",
                "-d", "primaza-environment",
                "-c", worker_cluster,
                "-m", main_cluster,
-               "-f", config]
+               "-f", config,
+               "-n", namespace,
+               "-s", main_namespace]
 
     out, err = run_cmd(command)
     if err:
@@ -225,7 +233,7 @@ def test_application_namespace_create(venv_dir, worker_cluster,
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
-    if not check_pods(worker_cluster, "primaza-application"):
+    if not check_pods(worker_cluster, namespace):
         print(f"[{FAIL}] application namespace pod is not running!\n\n{out}")
         return False
 
@@ -233,15 +241,19 @@ def test_application_namespace_create(venv_dir, worker_cluster,
     return True
 
 
-def test_service_namespace_create(venv_dir, worker_cluster,
-                                  main_cluster, config):
+def test_service_namespace_create(venv_dir, namespace,
+                                  worker_cluster,
+                                  main_cluster, main_namespace,
+                                  config):
 
     command = [f"{venv_dir}/bin/primazactl",
                "worker", "create", "service-namespace",
                "-d", "primaza-environment",
                "-c", worker_cluster,
                "-m", main_cluster,
-               "-f", config]
+               "-f", config,
+               "-n", namespace,
+               "-s", main_namespace]
 
     out, err = run_cmd(command)
     if err:
@@ -252,7 +264,7 @@ def test_service_namespace_create(venv_dir, worker_cluster,
         print(f"[{FAIL}] Unexpected response: {out}")
         return False
 
-    if not check_pods(worker_cluster, "primaza-service"):
+    if not check_pods(worker_cluster, namespace):
         print(f"[{FAIL}] service namespace pod is not running!\n\n{out}")
         return False
 
@@ -294,22 +306,33 @@ def main():
 
     args = parser.parse_args()
 
+    main_namespace = "primaza-controller-system"
+    service_namespace = "service-agent-system"
+    application_namespace = "application-agent-system"
+
     outcome = test_args(args.venv_dir)
-    outcome = outcome & test_main_install(args.venv_dir, args.main_config,
-                                          args.main_cluster_name)
+    outcome = outcome & test_main_install(args.venv_dir,
+                                          args.main_config,
+                                          args.main_cluster_name,
+                                          main_namespace)
     outcome = outcome & test_worker_install(args.venv_dir,
                                             args.worker_config,
                                             args.worker_cluster_name,
-                                            args.main_cluster_name)
+                                            args.main_cluster_name,
+                                            main_namespace)
     outcome = outcome & test_application_namespace_create(
         args.venv_dir,
+        application_namespace,
         args.worker_cluster_name,
         args.main_cluster_name,
+        main_namespace,
         args.app_config)
     outcome = outcome & test_service_namespace_create(
         args.venv_dir,
+        service_namespace,
         args.worker_cluster_name,
         args.main_cluster_name,
+        main_namespace,
         args.service_config)
 
     if outcome:

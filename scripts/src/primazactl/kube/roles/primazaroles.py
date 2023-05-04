@@ -10,7 +10,7 @@ def get_primaza_namespace_role(user: str, namespace: str) -> client.V1Role:
             namespace=namespace,
             labels={"app.kubernetes.io/component": "coreV1",
                     "app.kubernetes.io/created-by": "primaza",
-                    "app.kubernetes.io/instance": user,
+                    "app.kubernetes.io/instance": user.replace(":", "-"),
                     "app.kubernetes.io/managed-by": "primazactl",
                     "app.kubernetes.io/name": "rolebinding",
                     "app.kubernetes.io/part-of": "primaza"}),

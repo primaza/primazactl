@@ -11,12 +11,17 @@ from primazactl.kube.secret import Secret
 class KubeIdentity(object):
 
     api_client: client = None
-    identity: str = None
+    sa_name: str = None
+    key_name: str = None
     namespace: str = None
 
-    def __init__(self, api_client: client, identity: str, namespace: str,):
+    def __init__(self, api_client: client,
+                 sa_name: str,
+                 key_name: str,
+                 namespace: str,):
         self.api_client = api_client
-        self.identity = identity
+        self.sa_name = sa_name
+        self.key_name = key_name
         self.namespace = namespace
 
     def get_kubeconfig(self,
@@ -35,15 +40,15 @@ class KubeIdentity(object):
             :rtype: str
             :return kubeconfig: The kubeconfig as string
         """
-        logger.log_entry(f"csr name: {self.identity}, "
+        logger.log_entry(f"sa name: {self.sa_name}, "
                          f"namespace: {self.namespace}")
 
         idauth = self.get_token()
 
         kcw = kubeconfig.get_kube_config_for_cluster()
         kcd = kcw.get_kube_config_content_as_yaml()
-        kcd["contexts"][0]["context"]["user"] = self.identity
-        kcd["users"][0]["name"] = self.identity
+        kcd["contexts"][0]["context"]["user"] = self.sa_name
+        kcd["users"][0]["name"] = self.sa_name
         kcd["users"][0]["user"]["token"] = idauth["token"]
 
         if serverUrl is not None:
@@ -66,13 +71,13 @@ class KubeIdentity(object):
             :return token: A dictionary with Secret data: token, ca.crt,
                             and namespace
         """
-        logger.log_entry(f"identity: {self.identity} "
+        logger.log_entry(f"sa_name: {self.sa_name} "
                          f"namespace: {self.namespace}")
         corev1 = client.CoreV1Api(self.api_client)
 
         secret = polling2.poll(
             target=lambda: corev1.read_namespaced_secret(
-                name=f"{self.identity}-key",
+                name=self.key_name,
                 namespace=self.namespace),
             check_success=lambda x:
             x.data is not None and x.data["token"] is not None,
@@ -83,21 +88,11 @@ class KubeIdentity(object):
 
     def create(self):
 
-        """
-            Creates the Identity `identity` in the provided namespace
-
-            :type kubeconfig: KubeConfigWrapper
-            :param kubeconfig: Kubeconfig to use to connect to the cluster
-            :type identity: str
-            :param identity: The name of the identity
-            :type namespace: str
-            :param namespace: Namespace where to create the identity
-        """
-        logger.log_entry(f"identity: {self.identity} "
+        logger.log_entry(f"sa_name: {self.sa_name} "
                          f"namespace: {self.namespace}")
 
         service_account = ServiceAccount(self.api_client,
-                                         self.identity,
+                                         self.sa_name,
                                          self.namespace)
         service_account.create()
         sa = service_account.read()
@@ -110,7 +105,7 @@ class KubeIdentity(object):
 
         id_key = client.V1Secret(
             metadata=client.V1ObjectMeta(
-                name=f"{self.identity}-key",
+                name=self.key_name,
                 namespace=self.namespace,
                 owner_references=[ownership],
                 annotations={
@@ -118,6 +113,6 @@ class KubeIdentity(object):
                 },
             ),
             type="kubernetes.io/service-account-token",)
-        secret = Secret(self.api_client, f"{self.identity}-key",
+        secret = Secret(self.api_client, self.key_name,
                         self.namespace, None)
         secret.create(id_key)

@@ -3,18 +3,18 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.0.1
+VERSION ?= latest
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
-IMG ?= ghcr.io/primaza/primaza:latest
-IMG_APP ?= ghcr.io/primaza/primaza-agentapp:latest
-IMG_SVC ?= ghcr.io/primaza/primaza-agentsvc:latest
-IMG_APP_LOCAL ?= agentapp:latest
-IMG_SVC_LOCAL ?= agentsvc:latest
+IMG ?= ghcr.io/primaza/primaza:$(VERSION)
+IMG_APP ?= ghcr.io/primaza/primaza-agentapp:$(VERSION)
+IMG_SVC ?= ghcr.io/primaza/primaza-agentsvc:$(VERSION)
+IMG_APP_LOCAL ?= agentapp:$(VERSION)
+IMG_SVC_LOCAL ?= agentsvc:$(VERSION)
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -85,10 +85,10 @@ $(PRIMAZA_CONFIG_DIR):
 APPLICATION_NAMESPACE ?= primaza-application
 SERVICE_NAMESPACE ?= primaza-service
 
-PRIMAZA_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/primaza_config_latest.yaml
-WORKER_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/worker_config_latest.yaml
-APPLICATION_AGENT_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/application_agent_config_latest.yaml
-SERVICE_AGENT_CONFIG_FILE = $(PRIMAZA_CONFIG_DIR)/service_agent_config_latest.yaml
+PRIMAZA_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/primaza_config_$(VERSION).yaml
+WORKER_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/worker_config_$(VERSION).yaml
+APPLICATION_AGENT_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/application_agent_config_$(VERSION).yaml
+SERVICE_AGENT_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/service_agent_config_$(VERSION).yaml
 
 KIND_CONFIG_DIR ?= $(SCRIPTS_DIR)/src/primazatest/config
 MAIN_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-main.yaml
@@ -121,22 +121,19 @@ manifests: clone controller-gen ## Generate WebhookConfiguration, ClusterRole an
 config: clone manifests kustomize $(PRIMAZA_CONFIG_DIR) application_agent_config service_agent_config ## Get config files from primaza repo.
 	-rm $(PRIMAZA_CONFIG_FILE)
 	-rm $(WORKER_CONFIG_FILE)
-	cd $(TEMP_DIR)/config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+	cd $(TEMP_DIR)/config/manager && $(KUSTOMIZE) edit set image primaza-controller=$(IMG)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/default > $(PRIMAZA_CONFIG_FILE)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/crd > $(WORKER_CONFIG_FILE)
 
 .PHONY: application_agent_config
 application_agent_config: clone
 	-rm $(APPLICATION_AGENT_CONFIG_FILE)
-	cd $(TEMP_DIR)/config/agents/app/rbac && $(KUSTOMIZE) edit set namespace $(APPLICATION_NAMESPACE)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/app/rbac > $(APPLICATION_AGENT_CONFIG_FILE)
 
 .PHONY: service_agent_config
 service_agent_config: clone
 	-rm $(SERVICE_AGENT_CONFIG_FILE)
-	cd $(TEMP_DIR)/config/agents/svc && $(KUSTOMIZE) edit set namespace $(SERVICE_NAMESPACE)
-	cd $(TEMP_DIR)/config/agents/svc && $(KUSTOMIZE) edit remove resource agentsvc.yaml
-	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/svc --load-restrictor LoadRestrictionsNone > $(SERVICE_AGENT_CONFIG_FILE)
+	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/svc/rbac  > $(SERVICE_AGENT_CONFIG_FILE)
 
 .PHONY: image
 image:

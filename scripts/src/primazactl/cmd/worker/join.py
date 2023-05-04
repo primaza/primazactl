@@ -9,6 +9,7 @@ from primazactl.types import \
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.utils.kubeconfig import from_env
+from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
 
 
 def add_join(parser: argparse.ArgumentParser, parents=[]):
@@ -95,6 +96,15 @@ def add_args_join(parser: argparse.ArgumentParser):
         type=str,
         default=None)
 
+    parser.add_argument(
+        "-s", "--main-namespace",
+        dest="main_namespace",
+        type=kubernetes_name,
+        required=False,
+        help=f"namespace to use for join. Default: \
+            {PRIMAZA_NAMESPACE}",
+        default={})
+
 
 def join_primaza(args):
     validate(args)
@@ -102,6 +112,7 @@ def join_primaza(args):
     try:
         main = MainCluster(
             cluster_name=args.main_clustername,
+            namespace=args.main_namespace,
             kubeconfig_path=args.main_kubeconfig,
             config_file=None,
             version=None,
