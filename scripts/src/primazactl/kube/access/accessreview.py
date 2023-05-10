@@ -24,8 +24,6 @@ class AccessReview(object):
         self.full_verbs = self.get_full_verbs()
 
     def split_verbs(self, verbs):
-        if sorted(verbs) == sorted(self.full_verbs):
-            return "*", None
         can_verbs = []
         cannot_verbs = []
         # Based on allowed verbs, determine not allowed verbs

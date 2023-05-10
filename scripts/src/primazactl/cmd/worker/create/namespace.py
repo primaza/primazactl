@@ -118,7 +118,7 @@ def __create_namespace(args, type):
                                     worker)
         namespace.create()
 
-        worker.create_namespaced_secret(kcfg)
+        worker.create_namespaced_kubeconfig_secret(kcfg)
 
         namespace.check()
         print(f"{type} namespace primaza-{type} was successfully created")

@@ -103,7 +103,7 @@ def add_args_join(parser: argparse.ArgumentParser):
         required=False,
         help=f"namespace to use for join. Default: \
             {PRIMAZA_NAMESPACE}",
-        default={})
+        default=PRIMAZA_NAMESPACE)
 
 
 def join_primaza(args):

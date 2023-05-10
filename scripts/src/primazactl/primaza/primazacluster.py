@@ -77,14 +77,17 @@ class PrimazaCluster(object):
         identity.create()
         return identity
 
-    def create_namespaced_secret(self, kubeconfig: str,
-                                 cluster_environment: str = None):
+    def create_namespaced_kubeconfig_secret(
+            self,
+            kubeconfig: str,
+            cluster_environment: str = None):
         """
         Creates the Primaza's secret
         """
-        user_type = self.user_type \
-            if not cluster_environment \
-            else cluster_environment
+        user_type = cluster_environment \
+            if cluster_environment \
+            else self.user_type
+
         logger.log_entry(f"user_type: {user_type}, "
                          f"namespace: {self.namespace}")
         secret_name = names.get_kube_secret_name(user_type)

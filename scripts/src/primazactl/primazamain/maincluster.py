@@ -1,7 +1,7 @@
 
 from primazactl.utils import logger
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
-from .constants import PRIMAZA_NAMESPACE, PRIMAZA_USER
+from .constants import PRIMAZA_USER
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.identity.kubeidentity import KubeIdentity
 from .clusterenvironment import ClusterEnvironment
@@ -20,9 +20,6 @@ class MainCluster(PrimazaCluster):
             kubeconfig_path: str | None,
             config_file: str | None,
             version: str | None):
-
-        if not namespace:
-            namespace = PRIMAZA_NAMESPACE
 
         cluster_name = cluster_name \
             if cluster_name is not None \

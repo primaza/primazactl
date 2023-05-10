@@ -78,7 +78,7 @@ class WorkerCluster(PrimazaCluster):
         logger.log_info("Create cluster context secret in main")
         cc_kubeconfig = self.get_kubeconfig(identity,
                                             self.primaza_main.cluster_name)
-        secret_name = self.primaza_main.create_namespaced_secret(
+        secret_name = self.primaza_main.create_namespaced_kubeconfig_secret(
             cc_kubeconfig, self.cluster_environment)
 
         logger.log_info("Create cluster environment in main")

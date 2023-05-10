@@ -108,14 +108,9 @@ kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
 	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
 
-.PHONY: controller-gen
-controller-gen: clone $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
-$(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) $(GO) install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
-
 .PHONY: manifests
-manifests: clone controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	cd $(TEMP_DIR) && $(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+manifests: clone ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	cd $(TEMP_DIR) && make manifests
 
 .PHONY: config
 config: clone manifests kustomize $(PRIMAZA_CONFIG_DIR) application_agent_config service_agent_config ## Get config files from primaza repo.
