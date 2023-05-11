@@ -5,32 +5,6 @@ from kubernetes.client.rest import ApiException
 from primazactl.utils import logger
 
 
-def update_namespace(body: {}, namespace):
-    if body["kind"] == "Namespace":
-        update_dict(body, "name", namespace)
-    else:
-        update_dict(body, "namespace", namespace)
-
-
-def update_list(items: [], key: str, new_value: str):
-    for item in items:
-        if not isinstance(item, str):
-            if isinstance(item, dict):
-                update_dict(item, key, new_value)
-            elif isinstance(item, list):
-                update_list(item, key, new_value)
-
-
-def update_dict(body: {}, key: str, new_value: str):
-    for entry in body:
-        if isinstance(body[entry], dict):
-            update_dict(body[entry], key, new_value)
-        elif isinstance(body[entry], list):
-            update_list(body[entry], key, new_value)
-        elif entry == key:
-            body[entry] = new_value
-
-
 def get_method(kind, action="create", namespaced=False):
     method = action
     if namespaced:
@@ -110,26 +84,23 @@ def apply_resource(resource: {}, api_client: client, action: str = "create"):
     return resp, error
 
 
-def apply_file(manifest_file, client: client, namespace: str,
-               action: str = "create") -> []:
+def apply_manifest(resource_list, client: client,
+                   action: str = "create") -> []:
 
-    with open(manifest_file, 'r') as manifest:
-
-        errors = []
-        for resource in yaml.safe_load_all(manifest):
-            update_namespace(resource, namespace)
-            try:
-                _, error = apply_resource(resource, client, action)
-                if error:
-                    errors.append(error)
-            except ApiException as api_exception:
-                body = yaml.safe_load(api_exception.body)
-                if action == "create" and body["reason"] == "AlreadyExists":
-                    print(f'create: {body["message"]}')
-                elif action == "read" and body["reason"] == "NotFound":
-                    print(f'read: {body["message"]}')
-                elif action == "delete" and body["reason"] == "NotFound":
-                    print(f'delete: {body["message"]}')
-                else:
-                    errors.append(f'[ERROR] {action}: {body["message"]}')
-        return errors
+    errors = []
+    for resource in resource_list:
+        try:
+            _, error = apply_resource(resource, client, action)
+            if error:
+                errors.append(error)
+        except ApiException as api_exception:
+            body = yaml.safe_load(api_exception.body)
+            if action == "create" and body["reason"] == "AlreadyExists":
+                print(f'create: {body["message"]}')
+            elif action == "read" and body["reason"] == "NotFound":
+                print(f'read: {body["message"]}')
+            elif action == "delete" and body["reason"] == "NotFound":
+                print(f'delete: {body["message"]}')
+            else:
+                errors.append(f'[ERROR] {action}: {body["message"]}')
+    return errors

@@ -54,6 +54,7 @@ def run_and_check(venv_dir, args, expect_msg, expect_error_msg, fail_msg):
             if expect_error_msg in ctl_err:
                 print(f"\n+++[{PASS}] args: {args}\n")
             else:
+                print(f"Expected response to include:\n{expect_error_msg}\n")
                 print(f"\n---[{FAIL}] args: {args} : {fail_msg}\n")
                 outcome = False
         else:
@@ -107,14 +108,22 @@ def test_args(command_args):
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
-    args = ["main",
-            "install",
-            "-c",
-            "non-existent-cluster",
-            "--config",
-            command_args.main_config]
+    if command_args.version:
+        args = ["main",
+                "install",
+                "-c",
+                "non-existent-cluster",
+                "--version",
+                command_args.version]
+    else:
+        args = ["main",
+                "install",
+                "-c",
+                "non-existent-cluster",
+                "--config",
+                command_args.main_config]
 
-    expect_error_msg = "error deploying Primaza's controller into cluster " \
+    expect_error_msg = "Exception getting kubernetes client for cluster " \
                        "non-existent-cluster"
     fail_msg = "unexpected response to bad cluster"
     outcome = outcome & run_and_check(venv_dir, args, None,
@@ -123,14 +132,23 @@ def test_args(command_args):
     return outcome
 
 
-def test_main_install(venv_dir, config, cluster, namespace):
+def test_main_install(venv_dir, config, version, cluster, namespace):
 
-    command = [f"{venv_dir}/bin/primazactl",
-               "main",
-               "install",
-               "-f", config,
-               "-c", cluster,
-               "-n", namespace]
+    if version:
+        command = [f"{venv_dir}/bin/primazactl",
+                   "main",
+                   "install",
+                   "-c", cluster,
+                   "-n", namespace,
+                   "-v", version]
+    else:
+        command = [f"{venv_dir}/bin/primazactl",
+                   "main",
+                   "install",
+                   "-c", cluster,
+                   "-n", namespace,
+                   "-f", config]
+
     out, err = run_cmd(command)
 
     if err:
@@ -188,17 +206,27 @@ def check_pods(cluster, namespace):
     return outcome
 
 
-def test_worker_install(venv_dir, config, worker_cluster,
+def test_worker_install(venv_dir, config, version, worker_cluster,
                         main_cluster, main_namespace):
 
-    command = [f"{venv_dir}/bin/primazactl",
-               "worker", "join",
-               "-e", "test",
-               "-d", "primaza-environment",
-               "-f", config,
-               "-c", worker_cluster,
-               "-m", main_cluster,
-               "-s", main_namespace]
+    if version:
+        command = [f"{venv_dir}/bin/primazactl",
+                   "worker", "join",
+                   "-e", "test",
+                   "-d", "primaza-environment",
+                   "-c", worker_cluster,
+                   "-m", main_cluster,
+                   "-s", main_namespace,
+                   "-v", version]
+    else:
+        command = [f"{venv_dir}/bin/primazactl",
+                   "worker", "join",
+                   "-e", "test",
+                   "-d", "primaza-environment",
+                   "-c", worker_cluster,
+                   "-m", main_cluster,
+                   "-s", main_namespace,
+                   "-f", config]
 
     out, err = run_cmd(command)
     if err:
@@ -216,16 +244,25 @@ def test_worker_install(venv_dir, config, worker_cluster,
 def test_application_namespace_create(venv_dir, namespace,
                                       worker_cluster,
                                       main_cluster, main_namespace,
-                                      config):
-
-    command = [f"{venv_dir}/bin/primazactl",
-               "worker", "create", "application-namespace",
-               "-d", "primaza-environment",
-               "-c", worker_cluster,
-               "-m", main_cluster,
-               "-f", config,
-               "-n", namespace,
-               "-s", main_namespace]
+                                      config, version):
+    if version:
+        command = [f"{venv_dir}/bin/primazactl",
+                   "worker", "create", "application-namespace",
+                   "-d", "primaza-environment",
+                   "-c", worker_cluster,
+                   "-m", main_cluster,
+                   "-n", namespace,
+                   "-s", main_namespace,
+                   "-v", version]
+    else:
+        command = [f"{venv_dir}/bin/primazactl",
+                   "worker", "create", "application-namespace",
+                   "-d", "primaza-environment",
+                   "-c", worker_cluster,
+                   "-m", main_cluster,
+                   "-n", namespace,
+                   "-s", main_namespace,
+                   "-f", config]
 
     out, err = run_cmd(command)
     if err:
@@ -247,16 +284,27 @@ def test_application_namespace_create(venv_dir, namespace,
 def test_service_namespace_create(venv_dir, namespace,
                                   worker_cluster,
                                   main_cluster, main_namespace,
-                                  config):
+                                  config,
+                                  version):
 
-    command = [f"{venv_dir}/bin/primazactl",
-               "worker", "create", "service-namespace",
-               "-d", "primaza-environment",
-               "-c", worker_cluster,
-               "-m", main_cluster,
-               "-f", config,
-               "-n", namespace,
-               "-s", main_namespace]
+    if version:
+        command = [f"{venv_dir}/bin/primazactl",
+                   "worker", "create", "service-namespace",
+                   "-d", "primaza-environment",
+                   "-c", worker_cluster,
+                   "-m", main_cluster,
+                   "-n", namespace,
+                   "-s", main_namespace,
+                   "-v", version]
+    else:
+        command = [f"{venv_dir}/bin/primazactl",
+                   "worker", "create", "service-namespace",
+                   "-d", "primaza-environment",
+                   "-c", worker_cluster,
+                   "-m", main_cluster,
+                   "-n", namespace,
+                   "-s", main_namespace,
+                   "-f", config]
 
     out, err = run_cmd(command)
     if err:
@@ -281,14 +329,14 @@ def main():
         description='Run primazactl tests',
         epilog="Brought to you by the RedHat app-services team.")
 
-    parser.add_argument("-v", "--venvdir",
+    parser.add_argument("-p", "--venvdir",
                         dest="venv_dir", type=str, required=True,
                         help="location of python venv dir")
     parser.add_argument("-e", "--worker_config",
-                        dest="worker_config", type=str, required=True,
+                        dest="worker_config", type=str, required=False,
                         help="worker config file.")
     parser.add_argument("-f", "--config",
-                        dest="main_config", type=str, required=True,
+                        dest="main_config", type=str, required=False,
                         help="main config file.")
     parser.add_argument("-c", "--worker_cluster_name",
                         dest="worker_cluster_name", type=str, required=True,
@@ -301,11 +349,14 @@ def main():
                              "on which main is installed. "
                              "Defaults to worker install cluster.")
     parser.add_argument("-a", "--application_config",
-                        dest="app_config", type=str, required=True,
+                        dest="app_config", type=str, required=False,
                         help="application namespace config file.")
     parser.add_argument("-s", "--service_config",
-                        dest="service_config", type=str, required=True,
+                        dest="service_config", type=str, required=False,
                         help="service namespace config file.")
+    parser.add_argument("-v", "--version",
+                        dest="version", type=str, required=False,
+                        help="primaza version to use.")
 
     args = parser.parse_args()
 
@@ -316,10 +367,12 @@ def main():
     outcome = test_args(args)
     outcome = outcome & test_main_install(args.venv_dir,
                                           args.main_config,
+                                          args.version,
                                           args.main_cluster_name,
                                           main_namespace)
     outcome = outcome & test_worker_install(args.venv_dir,
                                             args.worker_config,
+                                            args.version,
                                             args.worker_cluster_name,
                                             args.main_cluster_name,
                                             main_namespace)
@@ -329,14 +382,16 @@ def main():
         args.worker_cluster_name,
         args.main_cluster_name,
         main_namespace,
-        args.app_config)
+        args.app_config,
+        args.version)
     outcome = outcome & test_service_namespace_create(
         args.venv_dir,
         service_namespace,
         args.worker_cluster_name,
         args.main_cluster_name,
         main_namespace,
-        args.service_config)
+        args.service_config,
+        args.version)
 
     if outcome:
         print("[SUCCESS] All tests passed")

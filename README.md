@@ -72,7 +72,7 @@ Primazactl help is organized in a hierarchy with contextual help available for d
 ## Command Summary
 
 - Main Install
-  - creates the namespace `primaza-system`
+  - creates a specified namespace, default is `primaza-system`.
     - control-plane `primaza-controller-manager`
     - default image installed: `ghcr.io/primaza/primaza:latest`
   - adds kubernetes resources required by primaza-main  
@@ -83,14 +83,14 @@ Primazactl help is organized in a hierarchy with contextual help available for d
     - creates a cluster-environment resource in main to enable main-worker communication.
 - Worker create application-namespace.
     - requires worker join to be complete first.
-    - creates a namespace `primaza-application`.
+    - creates a specified namespace, default is `primaza-application`.
     - creates an [indentity](docs/identities.md#identities) in the main namespace which is shared with the application namespace.
         - enables primaza main to access the namespace
     - creates a service account for the application-namespace to access kubernetes resources.
     - provides primaza worker service account with access to the namespace
-- Worker create application-service.
+- Worker create primaza-service.
     - requires worker join to be complete first.
-    - creates a namespace `primaza-service`.
+    - creates a specified namespace, default is `primaza-service`.
     - creates an [indentity](docs/identities.md#identities) in the main namespace which is shared with the service namespace.
         - enables primaza main to access the namespace
     - creates two service accounts for the service-namespace to access kubernetes resources based on two different roles.
@@ -137,11 +137,12 @@ options:
     - The kubeconfig file is not modified by primazactl.
     - The cluster specified for main install does not have to be the current context.
  - `--version VERSION`
-    - Not currently supported.
-        - When supported will provide an alternative to providing a config file.
+    - Specify the version of manifests to use.
+        - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.    
+        - Ignored if a config file is set.
  - `--namespace NAMESPACE`  
-   - Not currently supported.
-   - current default is `primaza-system`.
+   - Namespace to use for primaza main.
+   - Default is `primaza-system`.
 
 ## Worker join command
 
@@ -174,6 +175,8 @@ options:
                         path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
   -m MAIN_CLUSTERNAME, --primaza-clustername MAIN_CLUSTERNAME
                         name of cluster, as it appears in kubeconfig, on which Primaza is installed. Default: current kubeconfig context
+  -s MAIN_NAMESPACE, --main-namespace MAIN_NAMESPACE
+                        namespace to use for join. Default: primaza-system
 ```
 ### Worker join options
 - `--config CONFIG`:
@@ -193,8 +196,9 @@ options:
     - The kubeconfig file is not modified by primazactl.
     - The cluster specified for worker join does not have to be the current context.
 - `--version VERSION`
-    - Not currently supported.
-        - When supported will provide an alternative to providing a config file.
+    - Specify the version of manifests to use.
+        - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.
+        - Ignored if a config file is set.
 - `--clusterenvironment CLUSTER_ENVIRONMENT`
     - name to be used for the cluster environment resource created in the primaza-main namespace.
 - `--environment ENVIRONMENT`
@@ -203,13 +207,15 @@ options:
     - only set if the cluster on which primaza main installed is in a different kubeconfig file from the one set using the `--kubeconfig` option.
 - `--primaza-clustername MAIN_CLUSTERNAME`
     - only set if cluster on which primaza main is installed is different from the one set using the `--clustername` option.
+- `--main-namespace MAIN_NAMESPACE`
+    - Namespace of primaza-main.
+    - Default is `primaza-system`.
+    
 
 ## Worker create application namespace command
 
 Notes:
 - requires primaza worker join to be completed.
-- namespace created will be `primaza-application`
-  - Not currently supported to use a different name.
 
 ### Worker create application-namespace help
 ```
@@ -226,6 +232,12 @@ options:
                         name of cluster, as it appears in kubeconfig, on which Primaza is installed. Default: current kubeconfig context
   -f CONFIG, --config CONFIG
                         Config file containing agent roles
+  -n NAMESPACE, --namespace NAMESPACE
+                        namespace to create. Default: primaza-application
+  -s MAIN_NAMESPACE, --main-namespace MAIN_NAMESPACE
+                        namespace of primaza main. Default: primaza-system
+  -v VERSION, --version VERSION
+                        Version of primaza to use. Ignored if --config is set.                        
 ```
 
 ### Worker create application-namespace options: 
@@ -240,14 +252,23 @@ options:
     - To generate a suitable config file:
         - Run `make config` from the repository
         - The config will be created: `out/config/application_agent_config_latest.yaml`
-
+- `--namespace NAMESPACE`
+    - Namespace to use for application agent.
+    - Default is `primaza-application`. 
+- `--main-namespace MAIN_NAMESPACE`
+     - Namespace of primaza-main.
+     - Default is `primaza-system`.
+- `--version VERSION`
+    - Specify the version of manifests to use.
+        - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.
+        - Ignored if a config file is set.
+    
 
 ## Worker create service namespace command
 
 Notes:
 - requires primaza worker join to be completed.
-- namespace created will be `primaza-service`.
-    - Not currently supported to use a different name.  
+
     
 ### Worker create service-namespace help:
 ```
@@ -264,6 +285,12 @@ options:
                         name of cluster, as it appears in kubeconfig, on which Primaza is installed. Default: current kubeconfig context
   -f CONFIG, --config CONFIG
                         Config file containing agent roles
+  -n NAMESPACE, --namespace NAMESPACE
+                        namespace to create. Default: primaza-service
+  -s MAIN_NAMESPACE, --main-namespace MAIN_NAMESPACE
+                        namespace of primaza main. Default: primaza-system
+  -v VERSION, --version VERSION
+                        Version of primaza to use. Ignored if --config is set.                                                
 ```
 
 ### Worker create service-namespace options: 
@@ -278,7 +305,16 @@ options:
     - To generate a suitable config file:
         - Run `make config` from the repository
         - The config will be created: `out/config/service_agent_config_latest.yaml`
-    
+- `--namespace NAMESPACE`
+    - Namespace to use for service agent.
+    - Default is `primaza-service`.
+- `--main-namespace MAIN_NAMESPACE`
+    - Namespace of primaza-main.
+    - Default is `primaza-system`.
+- `--version VERSION`
+    - Specify the version of manifests to use.
+        - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.
+        - Ignored if a config file is set.    
     
 # Testing
 

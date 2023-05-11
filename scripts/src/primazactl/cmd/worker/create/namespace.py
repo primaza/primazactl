@@ -1,7 +1,9 @@
 import argparse
 import traceback
 import sys
-from primazactl.types import kubernetes_name, existing_file
+from primazactl.types import kubernetes_name, \
+    existing_file, \
+    semvertag_or_latest
 from primazactl.primazaworker.workernamespace import WorkerNamespace
 from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.primazamain.maincluster import MainCluster
@@ -85,6 +87,13 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
             {PRIMAZA_NAMESPACE}",
         default=PRIMAZA_NAMESPACE)
 
+    parser.add_argument(
+        "-v", "--version",
+        dest="version",
+        required=False,
+        help="Version of primaza to use. Ignored if --config is set.",
+        type=semvertag_or_latest)
+
 
 def __create_namespace(args, type):
     try:
@@ -114,6 +123,7 @@ def __create_namespace(args, type):
                                     args.cluster_environment,
                                     args.cluster_name,
                                     args.config,
+                                    args.version,
                                     main,
                                     worker)
         namespace.create()
