@@ -63,7 +63,9 @@ def run_and_check(venv_dir, args, expect_msg, expect_error_msg, fail_msg):
     return outcome
 
 
-def test_args(venv_dir):
+def test_args(command_args):
+
+    venv_dir = command_args.venv_dir
 
     outcome = True
     expect_msg = "usage: primazactl [-h]"
@@ -110,7 +112,8 @@ def test_args(venv_dir):
             "-c",
             "non-existent-cluster",
             "--config",
-            "out/config/primaza_config_latest.yaml"]
+            command_args.main_config]
+
     expect_error_msg = "error deploying Primaza's controller into cluster " \
                        "non-existent-cluster"
     fail_msg = "unexpected response to bad cluster"
@@ -310,7 +313,7 @@ def main():
     service_namespace = "service-agent-system"
     application_namespace = "application-agent-system"
 
-    outcome = test_args(args.venv_dir)
+    outcome = test_args(args)
     outcome = outcome & test_main_install(args.venv_dir,
                                           args.main_config,
                                           args.main_cluster_name,
