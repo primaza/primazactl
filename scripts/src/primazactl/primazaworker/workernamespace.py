@@ -7,6 +7,8 @@ from primazactl.kube.roles.primazaroles import get_primaza_namespace_role
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.cmd.worker.create.constants import APPLICATION
+from primazactl.kubectl.manifest import Manifest
+from primazactl.kubectl.constants import APP_AGENT_CONFIG, SVC_AGENT_CONFIG
 
 from .workercluster import WorkerCluster
 
@@ -21,12 +23,14 @@ class WorkerNamespace(PrimazaCluster):
     worker: WorkerCluster = None
     secret_name: str = None
     secret_cfg: str = None
+    manifest: Manifest = None
 
     def __init__(self, type,
                  namespace,
                  cluster_environment,
                  worker_cluster,
                  role_config,
+                 version,
                  main,
                  worker):
 
@@ -45,6 +49,14 @@ class WorkerNamespace(PrimazaCluster):
 
         self.main = main
         self.worker = worker
+
+        manifest_type = APP_AGENT_CONFIG \
+            if self.type == APPLICATION \
+            else SVC_AGENT_CONFIG
+
+        self.manifest = Manifest(namespace, role_config,
+                                 version, manifest_type)
+
         api_client = self.kubeconfig.get_api_client()
         self.kube_namespace = Namespace(api_client, namespace)
 
@@ -78,7 +90,7 @@ class WorkerNamespace(PrimazaCluster):
         #   namespace and its resources
         # - In the created namespace, create a RoleBinding for binding
         #   the agents' Service Account to the role defined above
-        self.install_config()
+        self.install_config(self.manifest)
 
         # - In the created namespace, create a Role (named
         #   primaza-application or primaza-service), that will grant
@@ -158,7 +170,3 @@ class WorkerNamespace(PrimazaCluster):
         ce.check("Online", "Online", "True")
 
         logger.log_exit("All checks passed")
-
-    def install_roles(self):
-        logger.log_entry(f"config: {self.role_config}")
-        self.install_config()

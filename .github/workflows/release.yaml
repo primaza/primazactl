@@ -32,18 +32,17 @@ jobs:
       - name: Set Version and Manifests
         run: |
           # set version based on dispatch type
+          version="latest"
           if [[ "${{github.event_name}}" == "workflow_dispatch" ]]; then
-            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+            version=${{ github.event.inputs.version }}
           elif [[ "${{github.ref_type}}" == "tag" ]]; then
-            echo "VERSION=${{  github.ref_name }}" >> $GITHUB_ENV
-          else
-            echo "VERSION=latest" >> $GITHUB_ENV
+            version=${{ github.ref_name }}
           fi
-          echo "PRIMAZA_CONFIG_FILE=primaza_main_config_${{ env.VERSION }}.yaml" >> $GITHUB_ENV
-          echo "WORKER_CONFIG_FILE=primaza_worker_config_${{ env.VERSION }}.yaml" >> $GITHUB_ENV
-          echo "APPLICATION_AGENT_CONFIG_FILE=application_agent_config_${{ env.VERSION }}.yaml" >> $GITHUB_ENV
-          echo "SERVICE_AGENT_CONFIG_FILE=service_agent_config_${{ env.VERSION }}.yaml" >> $GITHUB_ENV
-
+          echo "VERSION=$version" >> $GITHUB_ENV
+          echo "PRIMAZA_CONFIG_FILE=primaza_main_config_$version.yaml" >> $GITHUB_ENV
+          echo "WORKER_CONFIG_FILE=primaza_worker_config_$version.yaml" >> $GITHUB_ENV
+          echo "APPLICATION_AGENT_CONFIG_FILE=application_agent_config_$version.yaml" >> $GITHUB_ENV
+          echo "SERVICE_AGENT_CONFIG_FILE=service_agent_config_$version.yaml" >> $GITHUB_ENV
 
       - name: Test and make manifests
         id: test-and-manifests

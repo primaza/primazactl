@@ -104,12 +104,19 @@ class KubeConfigWrapper(object):
         return self.cluster_name
 
     def get_api_client(self) -> client:
-        if self.kube_config_file:
-            self.use_context()
-            config.load_kube_config(config_file=self.kube_config_file)
-            return client.ApiClient()
-        else:
-            content = yaml.safe_load(self.get_kube_config_content())
-            cluster_only_api_client = \
-                config.new_client_from_config_dict(content)
-            return cluster_only_api_client
+        try:
+            if self.kube_config_file:
+                self.use_context()
+                config.load_kube_config(config_file=self.kube_config_file)
+                return client.ApiClient()
+            else:
+                content = yaml.safe_load(self.get_kube_config_content())
+                cluster_only_api_client = \
+                    config.new_client_from_config_dict(content)
+                return cluster_only_api_client
+        except Exception as e:
+            msg = f"Exception getting kubernetes client for cluster " \
+                  f"{self.cluster_name} in {self.kube_config_file}. " \
+                  f"Exception was {e}"
+            logger.log_error(msg)
+            raise RuntimeError(f"[ERROR] {msg}")

@@ -6,12 +6,15 @@ from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.identity.kubeidentity import KubeIdentity
 from .clusterenvironment import ClusterEnvironment
 from primazactl.utils import names
+from primazactl.kubectl.manifest import Manifest
+from primazactl.kubectl.constants import PRIMAZA_CONFIG
 
 
 class MainCluster(PrimazaCluster):
     kubeconfig: KubeConfigWrapper = None
     kube_config_file: str
     primaza_version: str | None = None
+    manifest: Manifest = None
 
     def __init__(
             self,
@@ -35,6 +38,9 @@ class MainCluster(PrimazaCluster):
 
         self.primaza_version = version
 
+        self.manifest = Manifest(namespace, config_file,
+                                 version, PRIMAZA_CONFIG)
+
         kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
         self.kubeconfig = kcw.get_kube_config_for_cluster()
 
@@ -42,12 +48,7 @@ class MainCluster(PrimazaCluster):
                         f"{self.cluster_name}")
 
     def install_primaza(self):
-        try:
-            self.install_config()
-        except Exception as exc:
-            raise RuntimeError(
-                "error deploying Primaza's controller into "
-                f"cluster {self.cluster_name} : {exc}")
+        self.install_config(self.manifest)
 
     def create_primaza_identity(self, cluster_environment: str,
                                 user_type: str = None,
@@ -87,4 +88,4 @@ class MainCluster(PrimazaCluster):
         return ce
 
     def uninstall_primaza(self):
-        self.uninstall_config()
+        self.uninstall_config(self.manifest)

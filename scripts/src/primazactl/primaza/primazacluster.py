@@ -8,7 +8,6 @@ from primazactl.kube.role import Role
 from primazactl.kube.access.accessreview import AccessReview
 from primazactl.utils import kubeconfig
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
-from primazactl.kubectl import apply
 from primazactl.utils import names
 
 
@@ -118,23 +117,8 @@ class PrimazaCluster(object):
                 error_messages.extend(error_message)
         return error_messages
 
-    def install_config(self):
-        self.apply_config("create")
+    def install_config(self, manifest):
+        manifest.apply(self.kubeconfig.get_api_client(), "create")
 
-    def uninstall_config(self):
-        self.apply_config("delete")
-
-    def apply_config(self, action):
-        logger.log_entry(f"Namespace : {self.namespace}, "
-                         f"config: {self.config_file}")
-        errors = apply.apply_file(self.config_file,
-                                  self.kubeconfig.get_api_client(),
-                                  self.namespace,
-                                  action=action)
-
-        if len(errors) > 0:
-            msg = f"error performing {action} with config file " \
-                  f"{self.config_file} into cluster {self.cluster_name} : " \
-                  f"{errors}"
-            logger.log_error(msg)
-            raise RuntimeError(msg)
+    def uninstall_config(self, manifest):
+        manifest.apply(self.kubeconfig.get_api_client(), "delete")

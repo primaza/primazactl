@@ -5,6 +5,8 @@ from primazactl.primazamain.maincluster import MainCluster
 from .constants import WORKER_NAMESPACE, WORKER_ID
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.utils import names
+from primazactl.kubectl.manifest import Manifest
+from primazactl.kubectl.constants import WORKER_CONFIG
 
 
 class WorkerCluster(PrimazaCluster):
@@ -15,6 +17,7 @@ class WorkerCluster(PrimazaCluster):
     environment: str = None
     cluster_environment: str = None
     primaza_main: MainCluster = None
+    manifest: Manifest = None
 
     def __init__(
             self,
@@ -38,6 +41,8 @@ class WorkerCluster(PrimazaCluster):
         self.primaza_main = primaza_main
         self.environment = environment
         self.version = version
+        self.manifest = Manifest(WORKER_NAMESPACE, config_file,
+                                 version, WORKER_CONFIG)
 
         kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
         self.kubeconfig = kcw.get_kube_config_for_cluster()
@@ -91,7 +96,7 @@ class WorkerCluster(PrimazaCluster):
 
     def install_crd(self):
         logger.log_entry(f"config: {self.config_file}")
-        self.install_config()
+        self.install_config(self.manifest)
 
     def check_worker_roles(self, role_name, role_namespace):
         return self.check_service_account_roles(self.user,
