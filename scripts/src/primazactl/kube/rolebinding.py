@@ -36,7 +36,8 @@ class RoleBinding(object):
                     namespace=self.namespace,
                     labels={"app.kubernetes.io/component": "coreV1",
                             "app.kubernetes.io/created-by": "primaza",
-                            "app.kubernetes.io/instance": self.name,
+                            "app.kubernetes.io/instance":
+                                self.name.replace(":", "-"),
                             "app.kubernetes.io/managed-by": "primazactl",
                             "app.kubernetes.io/name": "rolebinding",
                             "app.kubernetes.io/part-of": "primaza"}),

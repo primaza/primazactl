@@ -19,6 +19,7 @@ def install_primaza(args):
     try:
         MainCluster(
             args.cluster_name,
+            args.namespace,
             args.kubeconfig,
             args.config,
             args.version).install_primaza()
