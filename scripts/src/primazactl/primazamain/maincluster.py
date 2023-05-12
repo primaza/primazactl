@@ -24,6 +24,8 @@ class MainCluster(PrimazaCluster):
             config_file: str | None,
             version: str | None):
 
+        self.kube_config_file = kubeconfig_path
+
         cluster_name = cluster_name \
             if cluster_name is not None \
             else KubeConfigWrapper(None, self.kube_config_file).get_context()
