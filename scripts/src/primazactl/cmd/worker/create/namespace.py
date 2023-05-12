@@ -7,7 +7,7 @@ from primazactl.types import kubernetes_name, \
 from primazactl.primazaworker.workernamespace import WorkerNamespace
 from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.primazamain.maincluster import MainCluster
-from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
+from primazactl.primazamain.constants import DEFAULT_TENANT
 from .constants import SERVICE, APPLICATION
 
 
@@ -79,13 +79,13 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         default=f"primaza-{type}")
 
     parser.add_argument(
-        "-s", "--main-namespace",
-        dest="main_namespace",
+        "-t", "--tenant",
+        dest="tenant",
         type=kubernetes_name,
         required=False,
-        help=f"namespace of primaza main. Default: \
-            {PRIMAZA_NAMESPACE}",
-        default=PRIMAZA_NAMESPACE)
+        help=f"tenant to use. Default: \
+            {DEFAULT_TENANT}",
+        default=DEFAULT_TENANT)
 
     parser.add_argument(
         "-v", "--version",
@@ -99,7 +99,7 @@ def __create_namespace(args, type):
     try:
 
         main = MainCluster(cluster_name=args.main_clustername,
-                           namespace=args.main_namespace,
+                           namespace=args.tenant,
                            kubeconfig_path=None,
                            config_file=None,
                            version=None,)
@@ -133,10 +133,11 @@ def __create_namespace(args, type):
         namespace.check()
         print(f"{type} namespace primaza-{type} was successfully created")
 
-    except Exception:
+    except Exception as e:
         print(traceback.format_exc())
         print(f"\nAn exception creating an {type} namespace",
               file=sys.stderr)
+        raise e
 
 
 def create_application_namespace(args):

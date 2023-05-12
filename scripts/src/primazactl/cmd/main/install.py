@@ -19,7 +19,7 @@ def install_primaza(args):
     try:
         MainCluster(
             args.cluster_name,
-            args.namespace,
+            args.tenant,
             args.kubeconfig,
             args.config,
             args.version).install_primaza()
@@ -28,3 +28,4 @@ def install_primaza(args):
         print(traceback.format_exc())
         print(f"\nAn exception occurred executing main install: {e}",
               file=sys.stderr)
+        raise e

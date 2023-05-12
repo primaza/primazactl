@@ -9,7 +9,7 @@ from primazactl.types import \
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.utils.kubeconfig import from_env
-from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
+from primazactl.primazamain.constants import DEFAULT_TENANT
 
 
 def add_join(parser: argparse.ArgumentParser, parents=[]):
@@ -97,13 +97,13 @@ def add_args_join(parser: argparse.ArgumentParser):
         default=None)
 
     parser.add_argument(
-        "-s", "--main-namespace",
-        dest="main_namespace",
+        "-t", "--tenant",
+        dest="tenant",
         type=kubernetes_name,
         required=False,
-        help=f"namespace to use for join. Default: \
-            {PRIMAZA_NAMESPACE}",
-        default=PRIMAZA_NAMESPACE)
+        help=f"tenant to use for join. Default: \
+            {DEFAULT_TENANT}",
+        default=DEFAULT_TENANT)
 
 
 def join_primaza(args):
@@ -112,7 +112,7 @@ def join_primaza(args):
     try:
         main = MainCluster(
             cluster_name=args.main_clustername,
-            namespace=args.main_namespace,
+            namespace=args.tenant,
             kubeconfig_path=args.main_kubeconfig,
             config_file=None,
             version=None,
@@ -133,6 +133,7 @@ def join_primaza(args):
         print(traceback.format_exc())
         print(f"\nAn exception occurred executing the "
               f"worker join function: {e}", file=sys.stderr)
+        raise e
 
 
 def validate(args):

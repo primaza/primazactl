@@ -1,2 +1,2 @@
-PRIMAZA_NAMESPACE: str = "primaza-system"
+DEFAULT_TENANT: str = "primaza-system"
 PRIMAZA_USER: str = "primaza"

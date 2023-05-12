@@ -139,14 +139,14 @@ def test_main_install(venv_dir, config, version, cluster, namespace):
                    "main",
                    "install",
                    "-c", cluster,
-                   "-n", namespace,
+                   "-t", namespace,
                    "-v", version]
     else:
         command = [f"{venv_dir}/bin/primazactl",
                    "main",
                    "install",
                    "-c", cluster,
-                   "-n", namespace,
+                   "-t", namespace,
                    "-f", config]
 
     out, err = run_cmd(command)
@@ -207,7 +207,7 @@ def check_pods(cluster, namespace):
 
 
 def test_worker_install(venv_dir, config, version, worker_cluster,
-                        main_cluster, main_namespace):
+                        main_cluster, tenant):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -216,7 +216,7 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
                    "-d", "primaza-environment",
                    "-c", worker_cluster,
                    "-m", main_cluster,
-                   "-s", main_namespace,
+                   "-t", tenant,
                    "-v", version]
     else:
         command = [f"{venv_dir}/bin/primazactl",
@@ -225,7 +225,7 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
                    "-d", "primaza-environment",
                    "-c", worker_cluster,
                    "-m", main_cluster,
-                   "-s", main_namespace,
+                   "-t", tenant,
                    "-f", config]
 
     out, err = run_cmd(command)
@@ -243,7 +243,7 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
 
 def test_application_namespace_create(venv_dir, namespace,
                                       worker_cluster,
-                                      main_cluster, main_namespace,
+                                      main_cluster, tenant,
                                       config, version):
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -252,7 +252,7 @@ def test_application_namespace_create(venv_dir, namespace,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-n", namespace,
-                   "-s", main_namespace,
+                   "-t", tenant,
                    "-v", version]
     else:
         command = [f"{venv_dir}/bin/primazactl",
@@ -261,7 +261,7 @@ def test_application_namespace_create(venv_dir, namespace,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-n", namespace,
-                   "-s", main_namespace,
+                   "-t", tenant,
                    "-f", config]
 
     out, err = run_cmd(command)
@@ -283,7 +283,7 @@ def test_application_namespace_create(venv_dir, namespace,
 
 def test_service_namespace_create(venv_dir, namespace,
                                   worker_cluster,
-                                  main_cluster, main_namespace,
+                                  main_cluster, tenant,
                                   config,
                                   version):
 
@@ -294,7 +294,7 @@ def test_service_namespace_create(venv_dir, namespace,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-n", namespace,
-                   "-s", main_namespace,
+                   "-t", tenant,
                    "-v", version]
     else:
         command = [f"{venv_dir}/bin/primazactl",
@@ -303,7 +303,7 @@ def test_service_namespace_create(venv_dir, namespace,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-n", namespace,
-                   "-s", main_namespace,
+                   "-t", tenant,
                    "-f", config]
 
     out, err = run_cmd(command)
@@ -360,7 +360,7 @@ def main():
 
     args = parser.parse_args()
 
-    main_namespace = "primaza-controller-system"
+    tenant = "primaza-controller-system"
     service_namespace = "service-agent-system"
     application_namespace = "application-agent-system"
 
@@ -369,19 +369,19 @@ def main():
                                           args.main_config,
                                           args.version,
                                           args.main_cluster_name,
-                                          main_namespace)
+                                          tenant)
     outcome = outcome & test_worker_install(args.venv_dir,
                                             args.worker_config,
                                             args.version,
                                             args.worker_cluster_name,
                                             args.main_cluster_name,
-                                            main_namespace)
+                                            tenant)
     outcome = outcome & test_application_namespace_create(
         args.venv_dir,
         application_namespace,
         args.worker_cluster_name,
         args.main_cluster_name,
-        main_namespace,
+        tenant,
         args.app_config,
         args.version)
     outcome = outcome & test_service_namespace_create(
@@ -389,7 +389,7 @@ def main():
         service_namespace,
         args.worker_cluster_name,
         args.main_cluster_name,
-        main_namespace,
+        tenant,
         args.service_config,
         args.version)
 
