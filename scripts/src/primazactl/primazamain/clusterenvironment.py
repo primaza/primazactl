@@ -1,5 +1,5 @@
 from primazactl.utils import logger
-from primazactl.cmd.worker.create.constants import APPLICATION
+from primazactl.cmd.create.namespace.constants import APPLICATION
 from primazactl.kube.customnamespaced import CustomNamespaced
 
 

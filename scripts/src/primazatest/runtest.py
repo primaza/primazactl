@@ -6,6 +6,10 @@ import time
 PASS = '\033[92mPASS\033[0m'
 FAIL = '\033[91mFAIL\033[0m'
 
+TENANT = "primaza-controller-system"
+SERVICE_NAMESPACE = "service-agent-system"
+APPLICATION_NAMESPACE = "application-agent-system"
+
 
 def run_cmd(cmd, silent=False):
 
@@ -74,34 +78,35 @@ def test_args(command_args):
     outcome = outcome & run_and_check(venv_dir, None, expect_msg,
                                       None, fail_msg)
 
-    args = ["main"]
+    args = ["create"]
     expect_msg = "usage: primazactl [-h]"
     fail_msg = "unexpected response to single argument"
     outcome = outcome & run_and_check(venv_dir, args, expect_msg,
                                       None, fail_msg)
 
     args = ["drink"]
-    expect_error_msg = "error: argument {main,worker}: " \
-        "invalid choice: 'drink' (choose from 'main', 'worker')"
+    expect_error_msg = "error: argument {create,delete,join}: " \
+        "invalid choice: 'drink' (choose from 'create', 'delete', 'join')"
     fail_msg = "unexpected response invalid action"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
-    args = ["main", "install", "-k", "/.kube/DoesNotExist"]
+    args = ["create", "tenant", TENANT, "-k", "/.kube/DoesNotExist"]
     expect_error_msg = "error: argument -k/--kubeconfig: --config does not" \
                        " specify a valid file: /.kube/DoesNotExist"
     fail_msg = "unexpected response to bad kube config file"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
-    args = ["main", "install", "-f", "scripts/config/DoesNotExist"]
+    args = ["create", "tenant",
+            TENANT, "-f", "scripts/config/DoesNotExist"]
     expect_error_msg = "error: argument -f/--config: --config does not " \
                        "specify a valid file: scripts/config/DoesNotExist"
     fail_msg = "unexpected response to bad config file"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
 
-    args = ["main", "install", "-v", "version.not.semantic"]
+    args = ["create", "tenant", TENANT, "-v", "version.not.semantic"]
     expect_error_msg = "error: argument -v/--version: --version is not a" \
                        " valid semantic version: version.not.semantic"
     fail_msg = "unexpected response to bad version"
@@ -109,15 +114,17 @@ def test_args(command_args):
                                       expect_error_msg, fail_msg)
 
     if command_args.version:
-        args = ["main",
-                "install",
+        args = ["create",
+                "tenant",
+                TENANT,
                 "-c",
                 "non-existent-cluster",
                 "--version",
                 command_args.version]
     else:
-        args = ["main",
-                "install",
+        args = ["create",
+                "tenant",
+                TENANT,
                 "-c",
                 "non-existent-cluster",
                 "--config",
@@ -136,17 +143,17 @@ def test_main_install(venv_dir, config, version, cluster, namespace):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
-                   "main",
-                   "install",
+                   "create",
+                   "tenant",
+                   namespace,
                    "-c", cluster,
-                   "-t", namespace,
                    "-v", version]
     else:
         command = [f"{venv_dir}/bin/primazactl",
-                   "main",
-                   "install",
+                   "create",
+                   "tenant",
+                   namespace,
                    "-c", cluster,
-                   "-t", namespace,
                    "-f", config]
 
     out, err = run_cmd(command)
@@ -211,7 +218,7 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
-                   "worker", "join",
+                   "join", "cluster",
                    "-e", "test",
                    "-d", "primaza-environment",
                    "-c", worker_cluster,
@@ -220,7 +227,7 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
                    "-v", version]
     else:
         command = [f"{venv_dir}/bin/primazactl",
-                   "worker", "join",
+                   "join", "cluster",
                    "-e", "test",
                    "-d", "primaza-environment",
                    "-c", worker_cluster,
@@ -247,20 +254,20 @@ def test_application_namespace_create(venv_dir, namespace,
                                       config, version):
     if version:
         command = [f"{venv_dir}/bin/primazactl",
-                   "worker", "create", "application-namespace",
+                   "create", "application-namespace",
+                   namespace,
                    "-d", "primaza-environment",
                    "-c", worker_cluster,
                    "-m", main_cluster,
-                   "-n", namespace,
                    "-t", tenant,
                    "-v", version]
     else:
         command = [f"{venv_dir}/bin/primazactl",
-                   "worker", "create", "application-namespace",
+                   "create", "application-namespace",
+                   namespace,
                    "-d", "primaza-environment",
                    "-c", worker_cluster,
                    "-m", main_cluster,
-                   "-n", namespace,
                    "-t", tenant,
                    "-f", config]
 
@@ -289,20 +296,20 @@ def test_service_namespace_create(venv_dir, namespace,
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
-                   "worker", "create", "service-namespace",
+                   "create", "service-namespace",
+                   namespace,
                    "-d", "primaza-environment",
                    "-c", worker_cluster,
                    "-m", main_cluster,
-                   "-n", namespace,
                    "-t", tenant,
                    "-v", version]
     else:
         command = [f"{venv_dir}/bin/primazactl",
-                   "worker", "create", "service-namespace",
+                   "create", "service-namespace",
+                   namespace,
                    "-d", "primaza-environment",
                    "-c", worker_cluster,
                    "-m", main_cluster,
-                   "-n", namespace,
                    "-t", tenant,
                    "-f", config]
 
@@ -360,36 +367,32 @@ def main():
 
     args = parser.parse_args()
 
-    tenant = "primaza-controller-system"
-    service_namespace = "service-agent-system"
-    application_namespace = "application-agent-system"
-
     outcome = test_args(args)
     outcome = outcome & test_main_install(args.venv_dir,
                                           args.main_config,
                                           args.version,
                                           args.main_cluster_name,
-                                          tenant)
+                                          TENANT)
     outcome = outcome & test_worker_install(args.venv_dir,
                                             args.worker_config,
                                             args.version,
                                             args.worker_cluster_name,
                                             args.main_cluster_name,
-                                            tenant)
+                                            TENANT)
     outcome = outcome & test_application_namespace_create(
         args.venv_dir,
-        application_namespace,
+        APPLICATION_NAMESPACE,
         args.worker_cluster_name,
         args.main_cluster_name,
-        tenant,
+        TENANT,
         args.app_config,
         args.version)
     outcome = outcome & test_service_namespace_create(
         args.venv_dir,
-        service_namespace,
+        SERVICE_NAMESPACE,
         args.worker_cluster_name,
         args.main_cluster_name,
-        tenant,
+        TENANT,
         args.service_config,
         args.version)
 
