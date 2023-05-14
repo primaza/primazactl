@@ -1,4 +1,3 @@
-
 from primazactl.utils import logger
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 from .constants import PRIMAZA_USER
@@ -18,7 +17,7 @@ class MainCluster(PrimazaCluster):
 
     def __init__(
             self,
-            cluster_name: str | None,
+            context: str | None,
             namespace: str | None,
             kubeconfig_path: str | None,
             config_file: str | None,
@@ -26,12 +25,12 @@ class MainCluster(PrimazaCluster):
 
         self.kube_config_file = kubeconfig_path
 
-        cluster_name = cluster_name \
-            if cluster_name is not None \
+        context = context \
+            if context is not None \
             else KubeConfigWrapper(None, self.kube_config_file).get_context()
 
         super().__init__(namespace,
-                         cluster_name,
+                         context,
                          PRIMAZA_USER,
                          None,
                          kubeconfig_path,
@@ -44,11 +43,11 @@ class MainCluster(PrimazaCluster):
         self.manifest = Manifest(namespace, config_file,
                                  version, PRIMAZA_CONFIG)
 
-        kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
+        kcw = KubeConfigWrapper(context, self.kube_config_file)
         self.kubeconfig = kcw.get_kube_config_for_cluster()
 
         logger.log_info("Primaza main created for cluster "
-                        f"{self.cluster_name}")
+                        f"{self.context}")
 
     def install_primaza(self):
         self.install_config(self.manifest)

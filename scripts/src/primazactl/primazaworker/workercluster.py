@@ -22,7 +22,7 @@ class WorkerCluster(PrimazaCluster):
     def __init__(
             self,
             primaza_main: MainCluster,
-            cluster_name: str,
+            context: str,
             kubeconfig_file: str,
             config_file: str,
             version: str,
@@ -32,7 +32,7 @@ class WorkerCluster(PrimazaCluster):
             ):
 
         super().__init__(WORKER_NAMESPACE,
-                         cluster_name,
+                         context,
                          WORKER_ID,
                          cluster_environment,
                          kubeconfig_file,
@@ -46,11 +46,11 @@ class WorkerCluster(PrimazaCluster):
         self.manifest = Manifest(WORKER_NAMESPACE, config_file,
                                  version, WORKER_CONFIG)
 
-        kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
+        kcw = KubeConfigWrapper(context, self.kube_config_file)
         self.kubeconfig = kcw.get_kube_config_for_cluster()
 
         logger.log_info("WorkerCluster created for cluster "
-                        f"{self.cluster_name}, config_file: "
+                        f"{self.context}, config_file: "
                         f"{self.config_file}")
 
     def install_worker(self):
@@ -64,14 +64,14 @@ class WorkerCluster(PrimazaCluster):
             logger.log_info(f"Namespace: {item.metadata.name} is "
                             f"make lint{item.status.phase}")
 
-        if not self.cluster_name:
-            self.cluster_name = self.kubeconfig.get_cluster_name()
-            if not self.cluster_name:
+        if not self.context:
+            self.context = self.kubeconfig.context
+            if not self.context:
                 raise RuntimeError("\n[ERROR] installing priamza: "
                                    "no cluster found.")
             else:
                 logger.log_info("Cluster set to current context: "
-                                f"{self.cluster_name}")
+                                f"{self.context}")
 
         self.install_crd()
 
@@ -84,7 +84,7 @@ class WorkerCluster(PrimazaCluster):
 
         logger.log_info("Create cluster context secret in main")
         cc_kubeconfig = self.get_kubeconfig(identity,
-                                            self.primaza_main.cluster_name)
+                                            self.primaza_main.context)
         secret_name = self.primaza_main.create_namespaced_kubeconfig_secret(
             cc_kubeconfig, self.primaza_main.namespace,
             self.cluster_environment)

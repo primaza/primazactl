@@ -64,7 +64,7 @@ class WorkerNamespace(PrimazaCluster):
     def create(self):
         logger.log_entry(f"namespace type: {self.type}, "
                          f"cluster environment: {self.cluster_environment}, "
-                         f"worker cluster: {self.worker.cluster_name}")
+                         f"worker cluster: {self.worker.context}")
 
         # On worker cluster
         # - create the namespace
@@ -77,7 +77,7 @@ class WorkerNamespace(PrimazaCluster):
             self.namespace)
 
         # Get kubeconfig with secret from service accounf
-        kc = self.main.get_kubeconfig(main_identity, self.cluster_name)
+        kc = self.main.get_kubeconfig(main_identity, self.context)
 
         # - in the created namespace, create the Secret
         #     'primaza-auth-$CLUSTER_ENVIRONMENT' the Worker key
@@ -121,7 +121,7 @@ class WorkerNamespace(PrimazaCluster):
         logger.log_info(f"ce:{ce.body}")
 
     def check(self):
-        logger.log_entry(f"Cluster: {self.cluster_name}, "
+        logger.log_entry(f"Cluster: {self.context}, "
                          f"Namespace {self.namespace}")
 
         error_messages = []

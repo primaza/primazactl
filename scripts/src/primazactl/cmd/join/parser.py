@@ -47,8 +47,8 @@ def add_args_join(parser: argparse.ArgumentParser):
 
     # worker
     parser.add_argument(
-        "-c", "--clustername",
-        dest="cluster_name",
+        "-c", "--context",
+        dest="context",
         type=str,
         required=False,
         help="name of cluster, as it appears in kubeconfig, \
@@ -68,7 +68,7 @@ def add_args_join(parser: argparse.ArgumentParser):
 
     # main
     parser.add_argument(
-        "-d", "--clusterenvironment",
+        "-d", "--cluster-environment",
         dest="cluster_environment",
         type=kubernetes_name,
         required=True,
@@ -84,7 +84,7 @@ def add_args_join(parser: argparse.ArgumentParser):
                 the ClusterEnvironment")
 
     parser.add_argument(
-        "-l", "--primaza-kubeconfig",
+        "-l", "--tenant-kubeconfig",
         dest="main_kubeconfig",
         required=False,
         help=f"path to kubeconfig file, default: KUBECONFIG \
@@ -94,8 +94,8 @@ def add_args_join(parser: argparse.ArgumentParser):
         default=from_env())
 
     parser.add_argument(
-        "-m", "--primaza-clustername",
-        dest="main_clustername",
+        "-m", "--tenant-context",
+        dest="tenant_context",
         required=False,
         help="name of cluster, as it appears in kubeconfig, \
                 on which Primaza is installed. Default: \
@@ -118,7 +118,7 @@ def join_cluster(args):
 
     try:
         main = MainCluster(
-            cluster_name=args.main_clustername,
+            context=args.tenant_context,
             namespace=args.tenant,
             kubeconfig_path=args.main_kubeconfig,
             config_file=None,
@@ -127,7 +127,7 @@ def join_cluster(args):
 
         WorkerCluster(
             primaza_main=main,
-            cluster_name=args.cluster_name,
+            context=args.context,
             kubeconfig_file=args.kubeconfig,
             config_file=args.config,
             version=args.version,

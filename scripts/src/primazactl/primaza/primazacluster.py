@@ -14,7 +14,7 @@ from primazactl.utils import names
 class PrimazaCluster(object):
 
     namespace: str = None
-    cluster_name: str = None
+    context: str = None
     user: str = None
     user_type: str = None
     kube_config_file: str = None
@@ -23,13 +23,13 @@ class PrimazaCluster(object):
     cluster_environment: str = None
     tenant: str = None
 
-    def __init__(self, namespace, cluster_name,
+    def __init__(self, namespace, context,
                  user, user_type,
                  kubeconfig_path, config_file,
                  cluster_environment,
                  tenant):
         self.namespace = namespace
-        self.cluster_name = cluster_name
+        self.context = context
         self.user = user
         self.user_type = user_type if user_type else user
         self.config_file = config_file
@@ -40,12 +40,12 @@ class PrimazaCluster(object):
             if kubeconfig_path is not None \
             else kubeconfig.from_env()
 
-        kcw = KubeConfigWrapper(cluster_name, self.kube_config_file)
+        kcw = KubeConfigWrapper(context, self.kube_config_file)
         self.kubeconfig = kcw.get_kube_config_for_cluster()
 
     def get_updated_server_url(self):
         logger.log_entry()
-        cluster = f'{self.cluster_name.replace("kind-","")}'
+        cluster = f'{self.context.replace("kind-","")}'
         control_plane = f'{cluster}-control-plane'
         out, err = Command().run(f"docker inspect {control_plane}")
         if err != 0:
@@ -63,11 +63,11 @@ class PrimazaCluster(object):
             return ""
 
     def get_kubeconfig(self, identity: KubeIdentity,
-                       other_cluster_name) -> Dict:
+                       other_context) -> Dict:
         logger.log_entry(f"id: {identity.sa_name}, "
-                         f"other_cluster_name: {other_cluster_name}")
+                         f"other_context: {other_context}")
         server_url = self.get_updated_server_url() \
-            if self.cluster_name != other_cluster_name \
+            if self.context != other_context \
             else None
 
         return identity.get_kubeconfig(self.kubeconfig, server_url)
@@ -102,7 +102,7 @@ class PrimazaCluster(object):
         return secret_name
 
     def kubeconfig(self) -> KubeConfigWrapper:
-        return KubeConfigWrapper(self.cluster_name, self.kube_config_file)
+        return KubeConfigWrapper(self.context, self.kube_config_file)
 
     def check_service_account_roles(self, service_account_name,
                                     role_name, role_namespace):

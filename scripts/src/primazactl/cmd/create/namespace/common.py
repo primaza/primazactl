@@ -18,7 +18,7 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         help="namespace to create")
 
     parser.add_argument(
-        "-d", "--clusterenvironment",
+        "-d", "--cluster-environment",
         dest="cluster_environment",
         type=kubernetes_name,
         required=True,
@@ -26,8 +26,8 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
                 will be created in Primaza")
 
     parser.add_argument(
-        "-c", "--clustername",
-        dest="cluster_name",
+        "-c", "--context",
+        dest="context",
         type=str,
         required=False,
         help="name of worker cluster, as it appears in kubeconfig, \
@@ -36,8 +36,8 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         default=None)
 
     parser.add_argument(
-        "-m", "--primaza-clustername",
-        dest="main_clustername",
+        "-m", "--tenant-context",
+        dest="tenant_context",
         required=False,
         help="name of cluster, as it appears in kubeconfig, \
                 on which Primaza is installed. Default: \
@@ -71,7 +71,7 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
 def __create_namespace(args, type):
     try:
 
-        main = MainCluster(cluster_name=args.main_clustername,
+        main = MainCluster(context=args.tenant_context,
                            namespace=args.tenant,
                            kubeconfig_path=None,
                            config_file=None,
@@ -79,7 +79,7 @@ def __create_namespace(args, type):
 
         worker = WorkerCluster(
             primaza_main=main,
-            cluster_name=args.cluster_name,
+            context=args.context,
             kubeconfig_file=None,
             config_file=None,
             version=None,
@@ -90,12 +90,12 @@ def __create_namespace(args, type):
 
         main_user = main.create_primaza_identity(
             args.cluster_environment)
-        kcfg = main.get_kubeconfig(main_user, args.cluster_name)
+        kcfg = main.get_kubeconfig(main_user, args.context)
 
         namespace = WorkerNamespace(type,
                                     args.namespace,
                                     args.cluster_environment,
-                                    args.cluster_name,
+                                    args.context,
                                     args.config,
                                     args.version,
                                     main,

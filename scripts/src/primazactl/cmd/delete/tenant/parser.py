@@ -18,7 +18,7 @@ def delete_tenant(args):
     validate(args)
     try:
         MainCluster(
-            args.cluster_name,
+            args.context,
             args.namespace,
             args.kubeconfig,
             args.config,
