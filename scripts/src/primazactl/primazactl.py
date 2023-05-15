@@ -19,12 +19,14 @@ def main():
             return
 
         args.func(args)
+        sys.exit(0)
 
     except (argparse.ArgumentError, ValidationError) as err:
         p.error(err)
     except Exception as err:
         sys.stderr.write("error: %s\n" % err)
-        sys.exit(1)
+
+    sys.exit(1)
 
 
 if __name__ == "__main__":

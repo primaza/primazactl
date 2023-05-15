@@ -24,7 +24,7 @@ class Manifest(object):
         self.type = type
 
     def update_namespace(self, body):
-        logger.log_entry(f"namesapce: {self.namespace}")
+        logger.log_entry(f"namespace: {self.namespace}")
         for resource in body:
             logger.log_info(f'resource: {resource["kind"]}')
             if resource["kind"] == "Namespace":
@@ -62,7 +62,7 @@ class Manifest(object):
         errors = apply_manifest(body_list, api_client, action)
         if len(errors) > 0:
             msg = f"error performing {action} with config " \
-                  f"{self.type} into namespace {self.namesapace} " \
+                  f"{self.type} into namespace {self.namespace} " \
                   f"{errors}"
 
             logger.log_error(msg)

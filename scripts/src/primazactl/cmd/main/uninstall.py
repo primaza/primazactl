@@ -28,3 +28,4 @@ def uninstall_primaza(args):
         print(traceback.format_exc())
         print(f"\nAn exception occurred executing main install: {e}",
               file=sys.stderr)
+        raise e

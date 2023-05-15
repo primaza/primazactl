@@ -5,7 +5,7 @@ from primazactl.errors import AtLeastOneError
 from primazactl.types import \
     existing_file, kubernetes_name, semvertag_or_latest
 from primazactl.utils.kubeconfig import from_env
-from primazactl.primazamain.constants import PRIMAZA_NAMESPACE
+from primazactl.primazamain.constants import DEFAULT_TENANT
 
 
 def add_shared_args(parser: argparse.ArgumentParser):
@@ -46,12 +46,13 @@ def add_shared_args(parser: argparse.ArgumentParser):
         default=from_env())
 
     parser.add_argument(
-        "-n", "--namespace",
-        dest="namespace",
+        "-t", "--tenant",
+        dest="tenant",
         type=kubernetes_name,
         required=False,
-        help=f"namespace to use for install. Default: \
-            {PRIMAZA_NAMESPACE}")
+        help=f"tenant to create. Default: \
+            {DEFAULT_TENANT}",
+        default=DEFAULT_TENANT)
 
 
 def validate(args):
