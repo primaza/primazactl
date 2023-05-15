@@ -117,6 +117,11 @@ config: clone manifests kustomize $(PRIMAZA_CONFIG_DIR) application_agent_config
 	-rm $(PRIMAZA_CONFIG_FILE)
 	-rm $(WORKER_CONFIG_FILE)
 	cd $(TEMP_DIR)/config/manager && $(KUSTOMIZE) edit set image primaza-controller=$(IMG)
+	cd $(TEMP_DIR)/config/manager && \
+		$(KUSTOMIZE) edit add configmap manager-config \
+			--behavior merge --disableNameSuffixHash \
+			--from-literal agentapp-image=$(IMG_APP) \
+			--from-literal agentsvc-image=$(IMG_SVC)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/default > $(PRIMAZA_CONFIG_FILE)
 	$(KUSTOMIZE) build $(TEMP_DIR)/config/crd > $(WORKER_CONFIG_FILE)
 
@@ -180,6 +185,7 @@ single-binary: ## Release primazactl as single binary
 		--onefile \
 		--clean \
 		--noconfirm \
+		--path $(SCRIPTS_DIR)/src \
 		--distpath $(PYTHON_VENV_DIR)/dist \
 		--workpath $(PYTHON_VENV_DIR)/build \
 		$(SCRIPTS_DIR)/src/primazactl/primazactl.py
