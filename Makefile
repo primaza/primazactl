@@ -128,12 +128,12 @@ config: clone manifests kustomize $(PRIMAZA_CONFIG_DIR) application_agent_config
 .PHONY: application_agent_config
 application_agent_config: clone
 	-rm $(APPLICATION_AGENT_CONFIG_FILE)
-	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/app/rbac > $(APPLICATION_AGENT_CONFIG_FILE)
+	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone $(TEMP_DIR)/config/agents/app/namespace > $(APPLICATION_AGENT_CONFIG_FILE)
 
 .PHONY: service_agent_config
 service_agent_config: clone
 	-rm $(SERVICE_AGENT_CONFIG_FILE)
-	$(KUSTOMIZE) build $(TEMP_DIR)/config/agents/svc/rbac  > $(SERVICE_AGENT_CONFIG_FILE)
+	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone $(TEMP_DIR)/config/agents/svc/namespace > $(SERVICE_AGENT_CONFIG_FILE)
 
 .PHONY: image
 image:
