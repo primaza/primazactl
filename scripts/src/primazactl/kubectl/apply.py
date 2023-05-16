@@ -96,7 +96,8 @@ def apply_manifest(resource_list, client: client,
         except ApiException as api_exception:
             body = yaml.safe_load(api_exception.body)
             if action == "create" and body["reason"] == "AlreadyExists":
-                print(f'create: {body["message"]}')
+                # print(f'create: {body["message"]}')
+                pass
             elif action == "read" and body["reason"] == "NotFound":
                 print(f'read: {body["message"]}')
             elif action == "delete" and body["reason"] == "NotFound":
