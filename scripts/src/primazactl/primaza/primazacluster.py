@@ -21,17 +21,20 @@ class PrimazaCluster(object):
     kubeconfig: KubeConfigWrapper = None
     config_file: str = None
     cluster_environment: str = None
+    tenant: str = None
 
     def __init__(self, namespace, cluster_name,
                  user, user_type,
                  kubeconfig_path, config_file,
-                 cluster_environment):
+                 cluster_environment,
+                 tenant):
         self.namespace = namespace
         self.cluster_name = cluster_name
         self.user = user
         self.user_type = user_type if user_type else user
         self.config_file = config_file
         self.cluster_environment = cluster_environment
+        self.tenant = tenant
 
         self.kube_config_file = kubeconfig_path \
             if kubeconfig_path is not None \
@@ -72,13 +75,15 @@ class PrimazaCluster(object):
     def create_identity(self, sa_name: str, key_name: str) -> KubeIdentity:
         logger.log_entry()
         api_client = self.kubeconfig.get_api_client()
-        identity = KubeIdentity(api_client, sa_name, key_name, self.namespace)
+        identity = KubeIdentity(api_client, sa_name,
+                                key_name, self.namespace, self.tenant)
         identity.create()
         return identity
 
     def create_namespaced_kubeconfig_secret(
             self,
             kubeconfig: str,
+            tenant: str,
             cluster_environment: str = None):
         """
         Creates the Primaza's secret
@@ -92,7 +97,7 @@ class PrimazaCluster(object):
         secret_name = names.get_kube_secret_name(user_type)
         api_client = self.kubeconfig.get_api_client()
         secret = Secret(api_client, secret_name,
-                        self.namespace, kubeconfig)
+                        self.namespace, kubeconfig, tenant)
         secret.create()
         return secret_name
 

@@ -126,6 +126,7 @@ def join_primaza(args):
             version=args.version,
             environment=args.environment,
             cluster_environment=args.cluster_environment,
+            tenant=args.tenant,
         ).install_worker()
 
         print("Install and configure worker completed")

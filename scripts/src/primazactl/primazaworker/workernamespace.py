@@ -45,7 +45,8 @@ class WorkerNamespace(PrimazaCluster):
                          self.user_type,
                          None,
                          role_config,
-                         cluster_environment)
+                         cluster_environment,
+                         worker.tenant)
 
         self.main = main
         self.worker = worker
@@ -82,7 +83,7 @@ class WorkerNamespace(PrimazaCluster):
         #     'primaza-auth-$CLUSTER_ENVIRONMENT' the Worker key
         #     and the kubeconfig for authenticating with the Primaza cluster.
 
-        self.create_namespaced_kubeconfig_secret(kc)
+        self.create_namespaced_kubeconfig_secret(kc, self.main.namespace)
 
         # - In the created namespace, create the Role for the
         #   agent (named for example primaza-application-agent or

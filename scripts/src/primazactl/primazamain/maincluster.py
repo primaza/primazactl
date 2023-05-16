@@ -36,7 +36,8 @@ class MainCluster(PrimazaCluster):
                          None,
                          kubeconfig_path,
                          config_file,
-                         None)
+                         None,
+                         namespace)
 
         self.primaza_version = version
 
