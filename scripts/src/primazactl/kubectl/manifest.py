@@ -23,11 +23,29 @@ class Manifest(object):
         self.version = version
         self.type = type
 
+    def replace_ns(self, body):
+        d = yaml.dump({"body": body})  # type: str
+        r = d.replace("primaza-system", self.namespace)
+        return yaml.safe_load(r)["body"]
+
     def update_namespace(self, body):
         logger.log_entry(f"namespace: {self.namespace}")
         for resource in body:
             logger.log_info(f'resource: {resource["kind"]}')
-            if resource["kind"] == "Namespace":
+            if resource["kind"] == "Certificate":
+                names = resource["spec"]["dnsNames"]
+                new_names = []
+                for name in names:
+                    nn = name.split(".")
+                    nn[1] = self.namespace
+                    new_names.append(".".join(nn))
+                resource["spec"]["dnsNames"] = new_names
+            elif resource["kind"] == "ValidatingWebhookConfiguration":
+                # FIXME: find a smarter way
+                nr = self.replace_ns(resource)
+                resource["metadata"] = nr["metadata"]
+                resource["webhooks"] = nr["webhooks"]
+            elif resource["kind"] == "Namespace":
                 update_dict(resource, "name", self.namespace)
             else:
                 update_dict(resource, "namespace", self.namespace)
