@@ -40,6 +40,7 @@ class Manifest(object):
                     nn[1] = self.namespace
                     new_names.append(".".join(nn))
                 resource["spec"]["dnsNames"] = new_names
+                update_dict(resource, "namespace", self.namespace)
             elif resource["kind"] == "ValidatingWebhookConfiguration":
                 # FIXME: find a smarter way
                 nr = self.replace_ns(resource)
