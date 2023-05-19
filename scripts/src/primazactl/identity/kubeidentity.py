@@ -14,15 +14,19 @@ class KubeIdentity(object):
     sa_name: str = None
     key_name: str = None
     namespace: str = None
+    tenant: str = None
 
     def __init__(self, api_client: client,
                  sa_name: str,
                  key_name: str,
-                 namespace: str,):
+                 namespace: str,
+                 tenant: str,
+                 ):
         self.api_client = api_client
         self.sa_name = sa_name
         self.key_name = key_name
         self.namespace = namespace
+        self.tenant = tenant
 
     def get_kubeconfig(self,
                        kubeconfig: KubeConfigWrapper,
@@ -114,5 +118,5 @@ class KubeIdentity(object):
             ),
             type="kubernetes.io/service-account-token",)
         secret = Secret(self.api_client, self.key_name,
-                        self.namespace, None)
+                        self.namespace, self.tenant, None)
         secret.create(id_key)

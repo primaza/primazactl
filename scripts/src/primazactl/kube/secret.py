@@ -9,13 +9,15 @@ class Secret(object):
     namespace: str = None
     kubeconfig: str = None
     corev1: client.CoreV1Api = None
+    tenant: str = None
 
     def __init__(self, api_client: client, name: str,
-                 namespace: str, kubeconfig: str):
+                 namespace: str, kubeconfig: str, tenant: str):
         self.name = name
         self.namespace = namespace
         self.kubeconfig = kubeconfig
         self.corev1 = client.CoreV1Api(api_client)
+        self.tenant = tenant
 
     def create(self, secret: client.V1Secret = None):
         logger.log_entry(f"Secret name: {self.name}, "
@@ -32,9 +34,13 @@ class Secret(object):
                                 "app.kubernetes.io/instance": self.name,
                                 "app.kubernetes.io/managed-by": "primazactl",
                                 "app.kubernetes.io/name": "secret",
-                                "app.kubernetes.io/part-of": "primaza"}
+                                "app.kubernetes.io/part-of": "primaza",
+                                "primaza.io/tenant": self.tenant}
                         ),
-                    string_data={"kubeconfig": self.kubeconfig})
+                    string_data={
+                        "kubeconfig": self.kubeconfig,
+                        "namespace": self.tenant,
+                    })
 
             try:
                 self.corev1.create_namespaced_secret(namespace=self.namespace,

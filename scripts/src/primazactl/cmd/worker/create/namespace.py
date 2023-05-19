@@ -112,6 +112,7 @@ def __create_namespace(args, type):
             version=None,
             environment=None,
             cluster_environment=args.cluster_environment,
+            tenant=args.tenant,
         )
 
         main_user = main.create_primaza_identity(
@@ -128,7 +129,7 @@ def __create_namespace(args, type):
                                     worker)
         namespace.create()
 
-        worker.create_namespaced_kubeconfig_secret(kcfg)
+        worker.create_namespaced_kubeconfig_secret(kcfg, args.tenant)
 
         namespace.check()
         print(f"{type} namespace primaza-{type} was successfully created")

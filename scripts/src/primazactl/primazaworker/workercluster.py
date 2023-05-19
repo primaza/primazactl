@@ -27,7 +27,8 @@ class WorkerCluster(PrimazaCluster):
             config_file: str,
             version: str,
             environment: str,
-            cluster_environment: str
+            cluster_environment: str,
+            tenant: str,
             ):
 
         super().__init__(WORKER_NAMESPACE,
@@ -36,7 +37,8 @@ class WorkerCluster(PrimazaCluster):
                          cluster_environment,
                          kubeconfig_file,
                          config_file,
-                         cluster_environment)
+                         cluster_environment,
+                         tenant)
 
         self.primaza_main = primaza_main
         self.environment = environment
@@ -84,7 +86,8 @@ class WorkerCluster(PrimazaCluster):
         cc_kubeconfig = self.get_kubeconfig(identity,
                                             self.primaza_main.cluster_name)
         secret_name = self.primaza_main.create_namespaced_kubeconfig_secret(
-            cc_kubeconfig, self.cluster_environment)
+            cc_kubeconfig, self.primaza_main.namespace,
+            self.cluster_environment)
 
         logger.log_info("Create cluster environment in main")
 
