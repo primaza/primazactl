@@ -194,11 +194,17 @@ single-binary: ## Release primazactl as single binary
 lint: primazactl ## Check python code
 	PYTHON_VENV_DIR=$(PYTHON_VENV_DIR) $(HACK_DIR)/check-python/lint-python-code.sh
 
-.PHONY: test
-test: setup-test
+.PHONY: test-local
+test-local: setup-test
 	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -m $(KUBE_KIND_CLUSTER_MAIN_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+
+.PHONY: test-released
+test-released:
 	make kind-clusters
 	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -v $(VERSION) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -m $(KUBE_KIND_CLUSTER_MAIN_NAME)
+
+.PHONY: test
+test: setup-test test-local test-released
 
 .PHONY: clean-temp
 clean-temp:

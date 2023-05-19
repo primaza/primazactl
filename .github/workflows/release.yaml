@@ -47,8 +47,8 @@ jobs:
       - name: Test and make manifests
         id: test-and-manifests
         run: |
-          # run make test to test and create manifests
-          make test
+          # run make test-local to test and create manifests
+          make test-local
 
       - name: Build binary
         run: make single-binary
