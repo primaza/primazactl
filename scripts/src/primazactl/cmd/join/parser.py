@@ -12,14 +12,21 @@ from primazactl.utils.kubeconfig import from_env
 from primazactl.primazamain.constants import DEFAULT_TENANT
 
 
-def add_join(parser: argparse.ArgumentParser, parents=[]):
+def add_group(parser: argparse.ArgumentParser, parents=[]):
     join_parser = parser.add_parser(
         name="join",
-        help="Join Primaza",
+        help="Join Cluster",
         parents=parents)
-    join_parser.set_defaults(func=join_primaza)
-    add_args_join(join_parser)
-    return join_parser
+
+    join_subparsers = join_parser.add_subparsers()
+    join_cluster_parser = join_subparsers.add_parser(
+        name="cluster",
+        help="Join Cluster",
+        parents=parents)
+
+    join_cluster_parser.set_defaults(func=join_cluster)
+    add_args_join(join_cluster_parser)
+    return join_cluster_parser
 
 
 def add_args_join(parser: argparse.ArgumentParser):
@@ -106,7 +113,7 @@ def add_args_join(parser: argparse.ArgumentParser):
         default=DEFAULT_TENANT)
 
 
-def join_primaza(args):
+def join_cluster(args):
     validate(args)
 
     try:

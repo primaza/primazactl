@@ -5,25 +5,25 @@ from .common import add_shared_args, validate
 from primazactl.primazamain.maincluster import MainCluster
 
 
-def add_install(parser: argparse.ArgumentParser, parents=[]):
-    install_parser = parser.add_parser(
-        name="install",
-        help="Install Primaza on target cluster",
+def add_delete_tenant(parser: argparse.ArgumentParser, parents=[]):
+    delete_parser = parser.add_parser(
+        "tenant",
+        help="delete Primaza tenant on target cluster",
         parents=parents)
-    install_parser.set_defaults(func=install_primaza)
-    add_shared_args(install_parser)
+    delete_parser.set_defaults(func=delete_tenant)
+    add_shared_args(delete_parser)
 
 
-def install_primaza(args):
+def delete_tenant(args):
     validate(args)
     try:
         MainCluster(
             args.cluster_name,
-            args.tenant,
+            args.namespace,
             args.kubeconfig,
             args.config,
-            args.version).install_primaza()
-        print("Primaza main installed")
+            args.version).delete_primaza()
+        print("Primaza main successfully deleted")
     except Exception as e:
         print(traceback.format_exc())
         print(f"\nAn exception occurred executing main install: {e}",

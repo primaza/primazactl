@@ -11,28 +11,11 @@ from primazactl.primazamain.constants import DEFAULT_TENANT
 from .constants import SERVICE, APPLICATION
 
 
-def add_create_applications_namespace(parser: argparse.ArgumentParser,
-                                      parents=[]):
-    applications_namespace_parser = parser.add_parser(
-        f"{APPLICATION}-namespace",
-        help="Create a namespace for applications",
-        parents=parents)
-    applications_namespace_parser.set_defaults(
-        func=create_application_namespace)
-    add_args_namespace(applications_namespace_parser, APPLICATION)
-
-
-def add_create_services_namespace(parser: argparse.ArgumentParser,
-                                  parents=[]):
-    services_namespace_parser = parser.add_parser(
-        f"{SERVICE}-namespace",
-        help="Create a namespace for services",
-        parents=parents)
-    services_namespace_parser.set_defaults(func=create_service_namespace)
-    add_args_namespace(services_namespace_parser, SERVICE)
-
-
 def add_args_namespace(parser: argparse.ArgumentParser, type):
+    parser.add_argument(
+        "namespace",
+        type=kubernetes_name,
+        help="namespace to create")
 
     parser.add_argument(
         "-d", "--clusterenvironment",
@@ -70,21 +53,11 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         help="Config file containing agent roles")
 
     parser.add_argument(
-        "-n", "--namespace",
-        dest="namespace",
-        type=kubernetes_name,
-        required=False,
-        help=f"namespace to create. Default: \
-            primaza-{type}",
-        default=f"primaza-{type}")
-
-    parser.add_argument(
         "-t", "--tenant",
         dest="tenant",
         type=kubernetes_name,
         required=False,
-        help=f"tenant to use. Default: \
-            {DEFAULT_TENANT}",
+        help=f"tenant to use. Default: {DEFAULT_TENANT}",
         default=DEFAULT_TENANT)
 
     parser.add_argument(

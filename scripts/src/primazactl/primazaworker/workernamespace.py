@@ -6,7 +6,7 @@ from primazactl.kube.rolebinding import RoleBinding
 from primazactl.kube.roles.primazaroles import get_primaza_namespace_role
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.primazamain.maincluster import MainCluster
-from primazactl.cmd.worker.create.constants import APPLICATION
+from primazactl.cmd.create.namespace.constants import APPLICATION
 from primazactl.kubectl.manifest import Manifest
 from primazactl.kubectl.constants import APP_AGENT_CONFIG, SVC_AGENT_CONFIG
 

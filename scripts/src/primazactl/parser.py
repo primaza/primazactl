@@ -1,7 +1,8 @@
 import argparse
 import sys
-from primazactl.cmd.main.parser import add_group as main_add_group
-from primazactl.cmd.worker.parser import add_group as worker_add_group
+from primazactl.cmd.create.parser import add_group as create_add_group
+from primazactl.cmd.delete.parser import add_group as delete_add_group
+from primazactl.cmd.join.parser import add_group as join_add_group
 
 
 class PrimazactlParser(argparse.ArgumentParser):
@@ -29,7 +30,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Set for verbose output")
 
     subparsers = parser.add_subparsers()
-    main_add_group(subparsers, parents=[base_subparser])
-    worker_add_group(subparsers, parents=[base_subparser])
+    create_add_group(subparsers, parents=[base_subparser])
+    delete_add_group(subparsers, parents=[base_subparser])
+    join_add_group(subparsers, parents=[base_subparser])
 
     return parser
