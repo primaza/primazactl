@@ -271,6 +271,7 @@ def test_application_namespace_create(venv_dir, namespace,
                    "-t", tenant,
                    "-f", config]
 
+    print("command: ", command)
     out, err = run_cmd(command)
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}")
@@ -313,6 +314,7 @@ def test_service_namespace_create(venv_dir, namespace,
                    "-t", tenant,
                    "-f", config]
 
+    print("command: ", command)
     out, err = run_cmd(command)
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}")
@@ -345,12 +347,12 @@ def main():
     parser.add_argument("-f", "--config",
                         dest="main_config", type=str, required=False,
                         help="main config file.")
-    parser.add_argument("-c", "--worker_cluster_name",
-                        dest="worker_cluster_name", type=str, required=True,
+    parser.add_argument("-c", "--worker_context",
+                        dest="worker_context", type=str, required=True,
                         help="name of cluster, as it appears in kubeconfig, "
                              "on which to install worker")
-    parser.add_argument("-m", "--mainclustername",
-                        dest="main_cluster_name", type=str,
+    parser.add_argument("-m", "--main_context",
+                        dest="main_context", type=str,
                         required=True,
                         help="name of cluster, as it appears in kubeconfig, "
                              "on which main is installed. "
@@ -371,27 +373,27 @@ def main():
     outcome = outcome & test_main_install(args.venv_dir,
                                           args.main_config,
                                           args.version,
-                                          args.main_cluster_name,
+                                          args.main_context,
                                           TENANT)
     outcome = outcome & test_worker_install(args.venv_dir,
                                             args.worker_config,
                                             args.version,
-                                            args.worker_cluster_name,
-                                            args.main_cluster_name,
+                                            args.worker_context,
+                                            args.main_context,
                                             TENANT)
     outcome = outcome & test_application_namespace_create(
         args.venv_dir,
         APPLICATION_NAMESPACE,
-        args.worker_cluster_name,
-        args.main_cluster_name,
+        args.worker_context,
+        args.main_context,
         TENANT,
         args.app_config,
         args.version)
     outcome = outcome & test_service_namespace_create(
         args.venv_dir,
         SERVICE_NAMESPACE,
-        args.worker_cluster_name,
-        args.main_cluster_name,
+        args.worker_context,
+        args.main_context,
         TENANT,
         args.service_config,
         args.version)

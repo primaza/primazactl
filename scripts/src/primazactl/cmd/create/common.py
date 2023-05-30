@@ -24,8 +24,8 @@ def add_shared_args(parser: argparse.ArgumentParser):
 
     # main
     parser.add_argument(
-        "-c", "--clustername",
-        dest="cluster_name",
+        "-c", "--context",
+        dest="context",
         type=str,
         required=False,
         help="name of cluster, as it appears in kubeconfig, \

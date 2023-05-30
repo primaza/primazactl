@@ -32,7 +32,7 @@ def create_tenant(args):
     validate(args)
     try:
         MainCluster(
-            args.cluster_name,
+            args.context,
             args.tenant,
             args.kubeconfig,
             args.config,

@@ -49,7 +49,7 @@ The current implementation provides:
 - a cluster available for primaza to be installed.
   - get a kind cluster by running `make kind-cluster`.
     - default cluster name is primazactl-test.
-      - set environment variable `KIND_CLUSTER_NAME` to overwrite.
+      - set environment variable `KIND_CONTEXT` to overwrite.
     - the configuration file used when creating the cluster is `scripts/src/primazatest/config/kind.yaml`. 
       - set environment variable `KIND_CONFIG_FILE` to overwrite.
     - For information on kind see : (kind quick start)[https://kind.sigs.k8s.io/docs/user/quick-start/].
@@ -100,7 +100,7 @@ Primazactl help is organized in a hierarchy with contextual help available for d
 
 ### Main install help
 ```
-usage: primazactl main install [-h] [-x] [-f CONFIG] [-v VERSION] [-c CLUSTER_NAME] [-k KUBECONFIG] [-n NAMESPACE]
+usage: primazactl main install [-h] [-x] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] [-n NAMESPACE]
 
 options:
   -h, --help            show this help message and exit
@@ -109,7 +109,7 @@ options:
                         primaza config file. Takes precedence over --version
   -v VERSION, --version VERSION
                         Version of primaza to use. Ignored if --config is set.
-  -c CLUSTER_NAME, --clustername CLUSTER_NAME
+  -c CONTEXT, --context CONTEXT
                         name of cluster, as it appears in kubeconfig, on which to install primaza or worker, default: current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
                         path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise <USER-HOME>.kube/config
@@ -126,8 +126,8 @@ options:
       - The manifest file sets the namespace to `primaza-system`
       - The manifest file sets the image to `ghcr.io/primaza/primaza:latest`
           - Set the environment variable `IMG` before running make to overwrite the image used.
- - `--clustername CLUSTER_NAME`:
-    - CLUSTER_NAME: the cluster, as it appears in kubeconfig, on which to install primaza main
+ - `--context CONTEXT`:
+    - CONTEXT: the cluster, as it appears in kubeconfig, on which to install primaza main
     - To create a kind cluster to use for testing:
         - Run `make kind-cluster` 
             - The cluster created for main install is `primazactl-main-test`
@@ -154,7 +154,7 @@ Notes:
 
 ### Worker join help
 ```
-usage: primazactl worker join [-h] [-x] [-f CONFIG] [-v VERSION] [-c CLUSTER_NAME] [-k KUBECONFIG] -d CLUSTER_ENVIRONMENT -e ENVIRONMENT [-l MAIN_KUBECONFIG] [-m MAIN_CLUSTERNAME]
+usage: primazactl worker join [-h] [-x] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] -d CLUSTER_ENVIRONMENT -e ENVIRONMENT [-l MAIN_KUBECONFIG] [-m TENANT_CONTEXT]
 
 options:
   -h, --help            show this help message and exit
@@ -163,17 +163,17 @@ options:
                         primaza config file. Takes precedence over --version
   -v VERSION, --version VERSION
                         Version of primaza to use. Ignored if --config is set.
-  -c CLUSTER_NAME, --clustername CLUSTER_NAME
+  -c CONTEXT, --context CONTEXT
                         name of cluster, as it appears in kubeconfig, on which to install primaza or worker, default: current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
                         path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
-  -d CLUSTER_ENVIRONMENT, --clusterenvironment CLUSTER_ENVIRONMENT
+  -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -e ENVIRONMENT, --environment ENVIRONMENT
                         the Environment that will be associated to the ClusterEnvironment
-  -l MAIN_KUBECONFIG, --primaza-kubeconfig MAIN_KUBECONFIG
+  -l MAIN_KUBECONFIG, --tenant-kubeconfig MAIN_KUBECONFIG
                         path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
-  -m MAIN_CLUSTERNAME, --primaza-clustername MAIN_CLUSTERNAME
+  -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which Primaza is installed. Default: current kubeconfig context
   -s MAIN_NAMESPACE, --main-namespace MAIN_NAMESPACE
                         namespace to use for join. Default: primaza-system
@@ -184,8 +184,8 @@ options:
     - To generate a suitable manifest file:
         - Run `make config` from the repository
         - The manifest will be created: `out/config/worker_config_latest.yaml` 
-- `--clustername CLUSTER_NAME` 
-    - CLUSTER_NAME: the cluster, as it appears in kubeconfig, on which to add primaza-worker
+- `--context CONTEXT` 
+    - CONTEXT: the cluster, as it appears in kubeconfig, on which to add primaza-worker
     - To create a kind cluster to use for testing:
         - Run `make kind-cluster`
             - The cluster created for the worker is `primazactl-worker-test`
@@ -199,14 +199,14 @@ options:
     - Specify the version of manifests to use.
         - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.
         - Ignored if a config file is set.
-- `--clusterenvironment CLUSTER_ENVIRONMENT`
+- `--cluster-environment CLUSTER_ENVIRONMENT`
     - name to be used for the cluster environment resource created in the primaza-main namespace.
 - `--environment ENVIRONMENT`
     - the name that will be associated to the ClusterEnvironment,
-- `--primaza-kubeconfig MAIN_KUBECONFIG`
+- `--tenant-kubeconfig MAIN_KUBECONFIG`
     - only set if the cluster on which primaza main installed is in a different kubeconfig file from the one set using the `--kubeconfig` option.
-- `--primaza-clustername MAIN_CLUSTERNAME`
-    - only set if cluster on which primaza main is installed is different from the one set using the `--clustername` option.
+- `--tenant-context TENANT_CONTEXT`
+    - only set if cluster on which primaza main is installed is different from the one set using the `--context` option.
 - `--main-namespace MAIN_NAMESPACE`
     - Namespace of primaza-main.
     - Default is `primaza-system`.
@@ -219,16 +219,16 @@ Notes:
 
 ### Worker create application-namespace help
 ```
-usage: primazactl worker create application-namespace [-h] [-x] -d CLUSTER_ENVIRONMENT [-c CLUSTER_NAME] [-m MAIN_CLUSTERNAME] [-f CONFIG]
+usage: primazactl worker create application-namespace [-h] [-x] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG]
 
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
-  -d CLUSTER_ENVIRONMENT, --clusterenvironment CLUSTER_ENVIRONMENT
+  -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
-  -c CLUSTER_NAME, --clustername CLUSTER_NAME
+  -c CONTEXT, --context CONTEXT
                         name of worker cluster, as it appears in kubeconfig, on which to create the namespace, default: current kubeconfig context
-  -m MAIN_CLUSTERNAME, --primaza-clustername MAIN_CLUSTERNAME
+  -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which Primaza is installed. Default: current kubeconfig context
   -f CONFIG, --config CONFIG
                         Config file containing agent roles
@@ -241,11 +241,11 @@ options:
 ```
 
 ### Worker create application-namespace options: 
-- `--clustername CLUSTER_NAME`
-    - CLUSTER_NAME: the cluster, as it appears in kubeconfig, on which primaza-worker is installed
-- `--clusterenvironment CLUSTER_ENVIRONMENT`
+- `--context CONTEXT`
+    - CONTEXT: the cluster, as it appears in kubeconfig, on which primaza-worker is installed
+- `--cluster-environment CLUSTER_ENVIRONMENT`
     - Used in the name of the primaza main [indentity](docs/identities.md#identities).
-- `--primaza-clustername MAIN_CLUSTERNAME`
+- `--tenant-context TENANT_CONTEXT`
     - Name of cluster, as it appears in kubeconfig, on which Primaza main is installed. Default: current kubeconfig context
 - `--config CONFIG`
     - Config file containing thr manifests for application agent roles.
@@ -272,16 +272,16 @@ Notes:
     
 ### Worker create service-namespace help:
 ```
-usage: primazactl worker create service-namespace [-h] [-x] -d CLUSTER_ENVIRONMENT [-c CLUSTER_NAME] [-m MAIN_CLUSTERNAME] [-f CONFIG]
+usage: primazactl worker create service-namespace [-h] [-x] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG]
 
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
-  -d CLUSTER_ENVIRONMENT, --clusterenvironment CLUSTER_ENVIRONMENT
+  -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
-  -c CLUSTER_NAME, --clustername CLUSTER_NAME
+  -c CONTEXT, --context CONTEXT
                         name of worker cluster, as it appears in kubeconfig, on which to create the namespace, default: current kubeconfig context
-  -m MAIN_CLUSTERNAME, --primaza-clustername MAIN_CLUSTERNAME
+  -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which Primaza is installed. Default: current kubeconfig context
   -f CONFIG, --config CONFIG
                         Config file containing agent roles
@@ -294,11 +294,11 @@ options:
 ```
 
 ### Worker create service-namespace options: 
-- `--clustername CLUSTER_NAME`
-    - CLUSTER_NAME: the cluster, as it appears in kubeconfig, on which primaza-worker is installed
-- `--clusterenvironment CLUSTER_ENVIRONMENT`
+- `--context CONTEXT`
+    - CONTEXT: the cluster, as it appears in kubeconfig, on which primaza-worker is installed
+- `--cluster-environment CLUSTER_ENVIRONMENT`
     - Used in the name of the primaza main [indentity](docs/identities.md#identities).
-- `--primaza-clustername MAIN_CLUSTERNAME`
+- `--tenant-context TENANT_CONTEXT`
     - name of cluster, as it appears in kubeconfig, on which Primaza main is installed. Default: current kubeconfig context
 - `--config CONFIG`
     - Config file containing thr manifests for application agent roles.
@@ -335,7 +335,7 @@ options:
         - Creates two kind clusters 
           - `primazactl-main-test`
             - used to install primaza main by the tests
-            - set environment variable `KIND_MAIN_CLUSTER_NAME` to overwrite. 
+            - set environment variable `KIND_MAIN_CONTEXT` to overwrite. 
             - a configuration file is used when creating the cluster 
                - The file used if `scripts/src/primazatest/config/kind-main.yaml`.
                - set environment variable `MAIN_KIND_CONFIG_FILE` to overwrite.
@@ -344,7 +344,7 @@ options:
                 - worker join.
                 - worker create application-namespace.
                 - worker create service-namespace.
-            - set environment variable `KIND_WORKER_CLUSTER_NAME` to overwrite.
+            - set environment variable `KIND_WORKER_CONTEXT` to overwrite.
             - a configuration file is used when creating the cluster
                 - The file used if `scripts/src/primazatest/config/kind-worker.yaml`.
                 - set environment variable `WORKER_KIND_CONFIG_FILE` to overwrite.
