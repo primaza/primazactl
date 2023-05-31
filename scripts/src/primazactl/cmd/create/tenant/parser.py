@@ -1,7 +1,7 @@
 import argparse
 import traceback
 import sys
-from primazactl.cmd.create.common import add_shared_args, validate
+from primazactl.cmd.create.common import add_shared_args
 from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.types import kubernetes_name
@@ -24,12 +24,13 @@ def add_args_tenant(parser: argparse.ArgumentParser):
     parser.add_argument(
         "tenant",
         type=kubernetes_name,
+        nargs='?',
         help=f"tenant to create. Default: \
-            {DEFAULT_TENANT}")
+            {DEFAULT_TENANT}",
+        default=DEFAULT_TENANT)
 
 
 def create_tenant(args):
-    validate(args)
     try:
         MainCluster(
             args.context,

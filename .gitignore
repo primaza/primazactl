@@ -170,3 +170,6 @@ cython_debug/
 
 *.swp
 *.swo
+
+# primazactl version file created as part of the build process
+scripts/src/primazactl/version.py

@@ -91,16 +91,18 @@ APPLICATION_AGENT_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/application_agent_config_
 SERVICE_AGENT_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/service_agent_config_$(VERSION).yaml
 
 KIND_CONFIG_DIR ?= $(SCRIPTS_DIR)/src/primazatest/config
-MAIN_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-main.yaml
-WORKER_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-worker.yaml
-KIND_CLUSTER_MAIN_NAME ?= primazactl-main-test
-KUBE_KIND_CLUSTER_MAIN_NAME ?= kind-$(KIND_CLUSTER_MAIN_NAME)
-KIND_CLUSTER_WORKER_NAME ?= primazactl-worker-test
-KUBE_KIND_CLUSTER_WORKER_NAME ?= kind-$(KIND_CLUSTER_WORKER_NAME)
+TENANT_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-main.yaml
+JOIN_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-worker.yaml
+KIND_CLUSTER_TENANT_NAME ?= primazactl-tenant-test
+KUBE_KIND_CLUSTER_TENANT_NAME ?= kind-$(KIND_CLUSTER_TENANT_NAME)
+KIND_CLUSTER_JOIN_NAME ?= primazactl-join-test
+KUBE_KIND_CLUSTER_JOIN_NAME ?= kind-$(KIND_CLUSTER_JOIN_NAME)
 
 KEY_FILE_NAME ?= primaza_private.key
 KEY_FILE_DIR ?= $(OUTPUT_DIR)/keys
 KEY_FILE =  $(KEY_FILE_DIR)/$(KEY_FILE_NAME)
+
+VERSION_FILE = $(SCRIPTS_DIR)/src/primazactl/version.py
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -145,17 +147,17 @@ image:
 
 .PHONY: kind-clusters
 kind-clusters: config image
-	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
-	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
-	kind create cluster --config $(MAIN_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_MAIN_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	-kind delete cluster --name $(KIND_CLUSTER_TENANT_NAME)
+	-kind delete cluster --name $(KIND_CLUSTER_JOIN_NAME)
+	kind create cluster --config $(TENANT_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_TENANT_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 	kubectl rollout status -n cert-manager deploy/cert-manager-webhook -w --timeout=120s
-	kind load docker-image $(IMG) --name $(KIND_CLUSTER_MAIN_NAME)
-	kind create cluster --config $(WORKER_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_WORKER_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
+	kind load docker-image $(IMG) --name $(KIND_CLUSTER_TENANT_NAME)
+	kind create cluster --config $(JOIN_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_JOIN_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
 	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 	kubectl rollout status -n cert-manager deploy/cert-manager-webhook -w --timeout=120s
-	kind load docker-image $(IMG_APP_LOCAL) --name $(KIND_CLUSTER_WORKER_NAME)
-	kind load docker-image $(IMG_SVC_LOCAL) --name $(KIND_CLUSTER_WORKER_NAME)
+	kind load docker-image $(IMG_APP_LOCAL) --name $(KIND_CLUSTER_JOIN_NAME)
+	kind load docker-image $(IMG_SVC_LOCAL) --name $(KIND_CLUSTER_JOIN_NAME)
 
 .PHONY: setup-test
 setup-test: clean image primazactl config kind-clusters
@@ -167,6 +169,7 @@ clone: clean-temp
 
 .PHONY: primazactl
 primazactl: ## Setup virtual environment
+	echo '__version__ = "$(VERSION)"' > $(VERSION_FILE)
 	-rm -rf $(PYTHON_VENV_DIR)
 	python3 -m venv $(PYTHON_VENV_DIR)
 	$(PYTHON_VENV_DIR)/bin/pip install --upgrade setuptools
@@ -196,12 +199,12 @@ lint: primazactl ## Check python code
 
 .PHONY: test-local
 test-local: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -m $(KUBE_KIND_CLUSTER_MAIN_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
 
 .PHONY: test-released
 test-released:
 	make kind-clusters
-	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -v $(VERSION) -c $(KUBE_KIND_CLUSTER_WORKER_NAME) -m $(KUBE_KIND_CLUSTER_MAIN_NAME)
+	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -v $(VERSION) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME)
 
 .PHONY: test
 test: setup-test test-local test-released
@@ -218,7 +221,7 @@ clean: clean-temp
 	rm -rf $(SCRIPTS_DIR)/dist
 	rm -rf $(SCRIPTS_DIR)/src/rh_primaza_control.egg-info
 	rm -rf $(LOCALBIN)
-	-kind delete cluster --name $(KIND_CLUSTER_MAIN_NAME)
-	-kind delete cluster --name $(KIND_CLUSTER_WORKER_NAME)
+	-kind delete cluster --name $(KIND_CLUSTER_TENANT_NAME)
+	-kind delete cluster --name $(KIND_CLUSTER_JOIN_NAME)
 	-docker image rm $(IMG_APP_LOCAL)
 	-docker image rm $(IMG_SVC_LOCAL)
