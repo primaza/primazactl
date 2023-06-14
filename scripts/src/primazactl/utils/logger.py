@@ -1,7 +1,9 @@
 import inspect
 import os
+from primazactl.version import __version__, __primaza_version__
 
 verbose = False
+first_log = True
 
 
 def log_info(message, always=False):
@@ -34,6 +36,11 @@ def set_verbose(value):
 
 
 def __write_log(type, message):
+    global first_log
+    if first_log:
+        first_log = False
+        log_info(f"Primazactl version: {__version__}, "
+                 f"Primaza version: {__primaza_version__}")
     stack = inspect.stack()
     if "self" in stack[2][0].f_locals:
         calling_class = stack[2][0].f_locals["self"].__class__.__name__

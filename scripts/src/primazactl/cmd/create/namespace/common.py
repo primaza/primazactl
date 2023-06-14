@@ -8,7 +8,7 @@ from primazactl.primazaworker.workernamespace import WorkerNamespace
 from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primazamain.constants import DEFAULT_TENANT
-from primazactl.version import __version__
+from primazactl.version import __primaza_version__
 from .constants import SERVICE, APPLICATION
 
 
@@ -65,10 +65,10 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         "-v", "--version",
         dest="version",
         required=False,
-        help=f"Version of primaza to use, default: {__version__}. "
+        help=f"Version of primaza to use, default: {__primaza_version__}. "
              "Ignored if --config is set.",
         type=semvertag_or_latest,
-        default=__version__)
+        default=__primaza_version__)
 
 
 def __create_namespace(args, type):

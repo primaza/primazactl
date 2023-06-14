@@ -9,7 +9,7 @@ from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.utils.kubeconfig import from_env
 from primazactl.primazamain.constants import DEFAULT_TENANT
-from primazactl.version import __version__
+from primazactl.version import __primaza_version__
 
 
 def add_group(parser: argparse.ArgumentParser, parents=[]):
@@ -42,10 +42,10 @@ def add_args_join(parser: argparse.ArgumentParser):
         "-v", "--version",
         dest="version",
         required=False,
-        help=f"Version of primaza to use, default: {__version__}. "
+        help=f"Version of primaza to use, default: {__primaza_version__}. "
              "Ignored if --config is set.",
         type=semvertag_or_latest,
-        default=__version__)
+        default=__primaza_version__)
 
     # worker
     parser.add_argument(

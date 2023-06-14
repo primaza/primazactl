@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 from primazactl.types import existing_file, semvertag_or_latest
 from primazactl.utils.kubeconfig import from_env
-from primazactl.version import __version__
+from primazactl.version import __primaza_version__
 
 
 def add_shared_args(parser: argparse.ArgumentParser):
@@ -19,10 +19,10 @@ def add_shared_args(parser: argparse.ArgumentParser):
         "-v", "--version",
         dest="version",
         required=False,
-        help=f"Version of primaza to use, default: {__version__}. "
+        help=f"Version of primaza to use, default: {__primaza_version__}. "
              "Ignored if --config is set.",
         type=semvertag_or_latest,
-        default=__version__)
+        default=__primaza_version__)
 
     # main
     parser.add_argument(

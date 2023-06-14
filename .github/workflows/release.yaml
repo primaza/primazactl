@@ -39,6 +39,7 @@ jobs:
             version=${{ github.ref_name }}
           fi
           echo "VERSION=$version" >> $GITHUB_ENV
+          echo "PRIMAZA_CTL_VERSION=$version" >> $GITHUB_ENV
           echo "PRIMAZA_CONFIG_FILE=primaza_main_config_$version.yaml" >> $GITHUB_ENV
           echo "WORKER_CONFIG_FILE=primaza_worker_config_$version.yaml" >> $GITHUB_ENV
           echo "APPLICATION_AGENT_CONFIG_FILE=application_agent_config_$version.yaml" >> $GITHUB_ENV

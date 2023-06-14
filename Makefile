@@ -4,6 +4,7 @@
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= latest
+PRIMAZA_CTL_VERSION ?= $(shell git describe --tags --always --abbrev=8 --dirty)
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
@@ -169,7 +170,8 @@ clone: clean-temp
 
 .PHONY: primazactl
 primazactl: ## Setup virtual environment
-	echo '__version__ = "$(VERSION)"' > $(VERSION_FILE)
+	echo '__version__ = "$(PRIMAZA_CTL_VERSION)"' > $(VERSION_FILE)
+	echo '__primaza_version__ = "$(VERSION)"' >> $(VERSION_FILE)
 	-rm -rf $(PYTHON_VENV_DIR)
 	python3 -m venv $(PYTHON_VENV_DIR)
 	$(PYTHON_VENV_DIR)/bin/pip install --upgrade setuptools

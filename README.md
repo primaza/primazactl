@@ -91,19 +91,19 @@ Primazactl help is organized in a hierarchy with contextual help available for d
 - Join cluster
     - requires tenant to be created first.
     - add kubernetes resources required to join a cluster.
-    - creates an [indentity](docs/identities.md#identities) which is shared with the primaza tenant.   
+    - creates an [identity](docs/identities.md#identities) which is shared with the primaza tenant.   
     - creates a cluster-environment resource in primaza tenant to enable communication with the joined cluster.
 - Create application-namespace.
     - requires join cluster to be complete first.
     - creates a specified namespace, default is `primaza-application`.
-    - creates an [indentity](docs/identities.md#identities) in the primaza tenant namespace which is shared with the application namespace.
+    - creates an [identity](docs/identities.md#identities) in the primaza tenant namespace which is shared with the application namespace.
         - enables primaza tenant to access the namespace
     - creates a service account for the application-namespace to access kubernetes resources.
     - provides join cluster primaza service account with access to the namespace
 - Create service-namespace.
     - requires join cluster to be complete first.
     - creates a specified namespace, default is `primaza-service`.
-    - creates an [indentity](docs/identities.md#identities) in the primaza tenant namespace which is shared with the service namespace.
+    - creates an [identity](docs/identities.md#identities) in the primaza tenant namespace which is shared with the service namespace.
         - enables primaza tenant to access the namespace
     - creates two service accounts for the service-namespace to access kubernetes resources based on two different roles.
     - provides join cluster service account with access to the namespace
