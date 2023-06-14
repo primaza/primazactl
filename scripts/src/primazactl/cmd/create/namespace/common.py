@@ -8,6 +8,7 @@ from primazactl.primazaworker.workernamespace import WorkerNamespace
 from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primazamain.constants import DEFAULT_TENANT
+from primazactl.version import __primaza_version__
 from .constants import SERVICE, APPLICATION
 
 
@@ -30,9 +31,9 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         dest="context",
         type=str,
         required=False,
-        help="name of worker cluster, as it appears in kubeconfig, \
-                  on which to create the namespace, default: \
-                  current kubeconfig context",
+        help="name of cluster, as it appears in kubeconfig, "
+             "on which to create the service or application namespace, "
+             "default: current kubeconfig context",
         default=None)
 
     parser.add_argument(
@@ -40,7 +41,7 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         dest="tenant_context",
         required=False,
         help="name of cluster, as it appears in kubeconfig, \
-                on which Primaza is installed. Default: \
+                on which Primaza tenant was created. Default: \
                 current kubeconfig context",
         type=str,
         default=None)
@@ -64,8 +65,10 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         "-v", "--version",
         dest="version",
         required=False,
-        help="Version of primaza to use. Ignored if --config is set.",
-        type=semvertag_or_latest)
+        help=f"Version of primaza to use, default: {__primaza_version__}. "
+             "Ignored if --config is set.",
+        type=semvertag_or_latest,
+        default=__primaza_version__)
 
 
 def __create_namespace(args, type):

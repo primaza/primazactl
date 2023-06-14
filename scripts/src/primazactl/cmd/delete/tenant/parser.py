@@ -1,7 +1,7 @@
 import argparse
 import traceback
 import sys
-from .common import add_shared_args, validate
+from .common import add_shared_args
 from primazactl.primazamain.maincluster import MainCluster
 
 
@@ -15,7 +15,6 @@ def add_delete_tenant(parser: argparse.ArgumentParser, parents=[]):
 
 
 def delete_tenant(args):
-    validate(args)
     try:
         MainCluster(
             args.context,

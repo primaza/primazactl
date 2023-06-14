@@ -3,13 +3,13 @@ import argparse
 import traceback
 import sys
 from pathlib import Path
-from primazactl.errors import AtLeastOneError
 from primazactl.types import \
     existing_file, kubernetes_name, semvertag_or_latest
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.utils.kubeconfig import from_env
 from primazactl.primazamain.constants import DEFAULT_TENANT
+from primazactl.version import __primaza_version__
 
 
 def add_group(parser: argparse.ArgumentParser, parents=[]):
@@ -42,8 +42,10 @@ def add_args_join(parser: argparse.ArgumentParser):
         "-v", "--version",
         dest="version",
         required=False,
-        help="Version of primaza to use. Ignored if --config is set.",
-        type=semvertag_or_latest)
+        help=f"Version of primaza to use, default: {__primaza_version__}. "
+             "Ignored if --config is set.",
+        type=semvertag_or_latest,
+        default=__primaza_version__)
 
     # worker
     parser.add_argument(
@@ -52,7 +54,7 @@ def add_args_join(parser: argparse.ArgumentParser):
         type=str,
         required=False,
         help="name of cluster, as it appears in kubeconfig, \
-                  on which to install primaza or worker, default: \
+                  to join, default: \
                   current kubeconfig context",
         default=None)
 
@@ -87,7 +89,7 @@ def add_args_join(parser: argparse.ArgumentParser):
         "-l", "--tenant-kubeconfig",
         dest="main_kubeconfig",
         required=False,
-        help=f"path to kubeconfig file, default: KUBECONFIG \
+        help=f"path to kubeconfig file for the tenant, default: KUBECONFIG \
                    environment variable if set, otherwise \
                    {(os.path.join(Path.home(),'.kube','config'))}",
         type=existing_file,
@@ -98,7 +100,7 @@ def add_args_join(parser: argparse.ArgumentParser):
         dest="tenant_context",
         required=False,
         help="name of cluster, as it appears in kubeconfig, \
-                on which Primaza is installed. Default: \
+                on which primaza tenant was created. Default: \
                 current kubeconfig context",
         type=str,
         default=None)
@@ -114,7 +116,6 @@ def add_args_join(parser: argparse.ArgumentParser):
 
 
 def join_cluster(args):
-    validate(args)
 
     try:
         main = MainCluster(
@@ -142,8 +143,3 @@ def join_cluster(args):
         print(f"\nAn exception occurred executing the "
               f"worker join function: {e}", file=sys.stderr)
         raise e
-
-
-def validate(args):
-    if not args.config and not args.version:
-        raise AtLeastOneError("--config", "--version")

@@ -3,6 +3,7 @@ import sys
 from primazactl.cmd.create.parser import add_group as create_add_group
 from primazactl.cmd.delete.parser import add_group as delete_add_group
 from primazactl.cmd.join.parser import add_group as join_add_group
+from primazactl.version import __version__
 
 
 class PrimazactlParser(argparse.ArgumentParser):
@@ -19,7 +20,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog='primazactl',
         description='Configure and install primaza and primaza '
                     'worker on clusters',
-        epilog="Brought to you by the RedHat app-services team.")
+        epilog=f"You are running primazactl version {__version__},"
+               f" brought to you by the RedHat app-services team.")
 
     base_subparser = argparse.ArgumentParser(add_help=False)
     base_subparser.add_argument(
