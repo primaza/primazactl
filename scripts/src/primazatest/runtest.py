@@ -237,7 +237,7 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
 
     out, err = run_cmd(command)
     if err:
-        print(f"[{FAIL}] Unexpected error response: {err}")
+        print(f"[{FAIL}] Unexpected error response: {err}\n{out}")
         return False
 
     if "Install and configure worker completed" not in out:
