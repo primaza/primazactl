@@ -1,6 +1,7 @@
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from primazactl.utils import logger
+from typing import Dict, List
 
 
 class Secret(object):
@@ -10,14 +11,17 @@ class Secret(object):
     kubeconfig: str = None
     corev1: client.CoreV1Api = None
     tenant: str = None
+    owners: List[Dict] = []
 
     def __init__(self, api_client: client, name: str,
-                 namespace: str, kubeconfig: str, tenant: str):
+                 namespace: str, kubeconfig: str, tenant: str,
+                 owners: List[Dict] = []):
         self.name = name
         self.namespace = namespace
         self.kubeconfig = kubeconfig
         self.corev1 = client.CoreV1Api(api_client)
         self.tenant = tenant
+        self.owners = owners
 
     def create(self, secret: client.V1Secret = None):
         logger.log_entry(f"Secret name: {self.name}, "
@@ -35,7 +39,8 @@ class Secret(object):
                                 "app.kubernetes.io/managed-by": "primazactl",
                                 "app.kubernetes.io/name": "secret",
                                 "app.kubernetes.io/part-of": "primaza",
-                                "primaza.io/tenant": self.tenant}
+                                "primaza.io/tenant": self.tenant},
+                        owner_references=self.owners,
                         ),
                     string_data={
                         "kubeconfig": self.kubeconfig,

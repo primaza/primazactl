@@ -1,5 +1,6 @@
 import yaml
 from typing import Dict
+from kubernetes import client
 from primazactl.utils import logger
 from primazactl.utils.command import Command
 from primazactl.identity.kubeidentity import KubeIdentity
@@ -84,20 +85,32 @@ class PrimazaCluster(object):
             self,
             kubeconfig: str,
             tenant: str,
-            cluster_environment: str = None):
+            cluster_environment: str = None,
+            secret_name: str = None):
         """
         Creates the Primaza's secret
         """
         user_type = cluster_environment \
             if cluster_environment \
             else self.user_type
+        secret_name = secret_name \
+            if secret_name \
+            else names.get_kube_secret_name(user_type)
 
         logger.log_entry(f"user_type: {user_type}, "
                          f"namespace: {self.namespace}")
-        secret_name = names.get_kube_secret_name(user_type)
         api_client = self.kubeconfig.get_api_client()
         secret = Secret(api_client, secret_name,
                         self.namespace, kubeconfig, tenant)
+
+        if cluster_environment is not None:
+            owner = self.read_clusterenvironment(tenant, cluster_environment)
+            secret.owners = [client.V1OwnerReference(
+                api_version=owner["apiVersion"],
+                kind=owner["kind"],
+                name=owner["metadata"]["name"],
+                uid=owner["metadata"]["uid"])]
+
         secret.create()
         return secret_name
 
@@ -127,3 +140,24 @@ class PrimazaCluster(object):
 
     def uninstall_config(self, manifest):
         manifest.apply(self.kubeconfig.get_api_client(), "delete")
+
+    def read_clusterenvironment(self, namespace: str,
+                                cluster_environment_name: str) -> Dict:
+        return self.read_custom_object(
+            namespace=namespace,
+            group="primaza.io",
+            version="v1alpha1",
+            plural="clusterenvironments",
+            name=cluster_environment_name)
+
+    def read_custom_object(self, namespace: str, group: str, version: str,
+                           plural: str, name: str) -> Dict:
+        api_client = self.kubeconfig.get_api_client()
+        cobj = client.CustomObjectsApi(api_client)
+
+        return cobj.get_namespaced_custom_object(
+            namespace=namespace,
+            group=group,
+            version=version,
+            plural=plural,
+            name=name)

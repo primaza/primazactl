@@ -1,12 +1,12 @@
-from kubernetes import client
-from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
-from primazactl.utils import logger
-from primazactl.primazamain.maincluster import MainCluster
 from .constants import WORKER_NAMESPACE, WORKER_ID
+from kubernetes import client
+from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primaza.primazacluster import PrimazaCluster
-from primazactl.utils import names
-from primazactl.kubectl.manifest import Manifest
 from primazactl.kubectl.constants import WORKER_CONFIG
+from primazactl.kubectl.manifest import Manifest
+from primazactl.utils import logger
+from primazactl.utils import names
+from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 
 
 class WorkerCluster(PrimazaCluster):
@@ -85,14 +85,14 @@ class WorkerCluster(PrimazaCluster):
         logger.log_info("Create cluster context secret in main")
         cc_kubeconfig = self.get_kubeconfig(identity,
                                             self.primaza_main.context)
-        secret_name = self.primaza_main.create_namespaced_kubeconfig_secret(
-            cc_kubeconfig, self.primaza_main.namespace,
-            self.cluster_environment)
 
         logger.log_info("Create cluster environment in main")
-
+        secret_name = names.get_kube_secret_name(self.cluster_environment)
         ce = self.primaza_main.create_cluster_environment(
             self.cluster_environment, self.environment, secret_name)
+        self.primaza_main.create_namespaced_kubeconfig_secret(
+            cc_kubeconfig, self.primaza_main.namespace,
+            self.cluster_environment, secret_name)
         ce.check("Online", "Online", "True")
 
         logger.log_exit("Worker install complete")
