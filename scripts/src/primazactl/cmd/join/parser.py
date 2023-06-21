@@ -87,7 +87,7 @@ def add_args_join(parser: argparse.ArgumentParser):
 
     parser.add_argument(
         "-l", "--tenant-kubeconfig",
-        dest="main_kubeconfig",
+        dest="tenant_kubeconfig",
         required=False,
         help=f"path to kubeconfig file for the tenant, default: KUBECONFIG \
                    environment variable if set, otherwise \
@@ -121,7 +121,7 @@ def join_cluster(args):
         main = MainCluster(
             context=args.tenant_context,
             namespace=args.tenant,
-            kubeconfig_path=args.main_kubeconfig,
+            kubeconfig_path=args.tenant_kubeconfig,
             config_file=None,
             version=None,
         )
