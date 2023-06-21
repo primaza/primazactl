@@ -1,3 +1,4 @@
+import base64
 import polling2
 import yaml
 from typing import Dict
@@ -51,9 +52,11 @@ class KubeIdentity(object):
 
         kcw = kubeconfig.get_kube_config_for_cluster()
         kcd = kcw.get_kube_config_content_as_yaml()
+        del kcd["users"]
+
         kcd["contexts"][0]["context"]["user"] = self.sa_name
-        kcd["users"][0]["name"] = self.sa_name
-        kcd["users"][0]["user"]["token"] = idauth["token"]
+        kcd["users"] = [
+                {"name": self.sa_name, "user": {"token": idauth["token"]}}]
 
         if serverUrl is not None:
             kcd["clusters"][0]["cluster"]["server"] = serverUrl
@@ -88,7 +91,11 @@ class KubeIdentity(object):
             step=1,
             timeout=timeout,
         )
-        return secret.data
+
+        data = {}
+        for k, v in secret.data.items():
+            data[k] = base64.b64decode(v.encode("utf-8")).decode("utf-8")
+        return data
 
     def create(self):
 

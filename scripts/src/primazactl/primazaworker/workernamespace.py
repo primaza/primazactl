@@ -9,7 +9,6 @@ from primazactl.primazamain.maincluster import MainCluster
 from primazactl.cmd.create.namespace.constants import APPLICATION
 from primazactl.kubectl.manifest import Manifest
 from primazactl.kubectl.constants import APP_AGENT_CONFIG, SVC_AGENT_CONFIG
-
 from .workercluster import WorkerCluster
 
 
@@ -108,12 +107,14 @@ class WorkerNamespace(PrimazaCluster):
         # - In the created namespace, RoleBinding for binding the user primaza
         #   to the role defined above
         rolebinding = names.get_rolebinding_name(self.user_type)
+        sa_name, _ = names.get_identity_names(
+                self.tenant, self.cluster_environment)
         primaza_binding = RoleBinding(api_client,
                                       rolebinding,
                                       self.namespace,
                                       primaza_role.name,
                                       self.worker.namespace,
-                                      self.worker.user)
+                                      sa_name)
         primaza_binding.create()
 
         ce = self.main.get_cluster_environment()
