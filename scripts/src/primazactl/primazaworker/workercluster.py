@@ -1,4 +1,4 @@
-from .constants import WORKER_NAMESPACE, WORKER_ID
+from .constants import WORKER_NAMESPACE
 from kubernetes import client
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primaza.primazacluster import PrimazaCluster
@@ -31,9 +31,10 @@ class WorkerCluster(PrimazaCluster):
             tenant: str,
             ):
 
+        sa_name, _ = names.get_identity_names(tenant, cluster_environment)
         super().__init__(WORKER_NAMESPACE,
                          context,
-                         WORKER_ID,
+                         sa_name,
                          cluster_environment,
                          kubeconfig_file,
                          config_file,
@@ -77,8 +78,8 @@ class WorkerCluster(PrimazaCluster):
 
         logger.log_info("Create certificate signing request")
 
-        sa_name, key_name = names.get_identity_names(self.cluster_environment,
-                                                     self.namespace)
+        sa_name, key_name = names.get_identity_names(
+                self.tenant, self.cluster_environment)
 
         identity = self.create_identity(sa_name, key_name)
 

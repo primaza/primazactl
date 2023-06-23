@@ -54,8 +54,9 @@ class ClusterEnvironment(CustomNamespaced):
 
         if entry in self.body["spec"]:
             values = self.body["spec"][entry]
-            values.append(name)
-            self.body["spec"][entry] = values
+            if name not in values:
+                values.append(name)
+                self.body["spec"][entry] = values
         else:
             self.body["spec"][entry] = [name]
 
