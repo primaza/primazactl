@@ -117,7 +117,7 @@ class WorkerNamespace(PrimazaCluster):
                                       sa_name)
         primaza_binding.create()
 
-        ce = self.main.get_cluster_environment()
+        ce = self.main.get_cluster_environment(self.cluster_environment)
         ce.add_namespace(self.type, self.namespace)
         logger.log_info(f"ce:{ce.body}")
 
@@ -168,7 +168,7 @@ class WorkerNamespace(PrimazaCluster):
                 "Error: namespace install has failed to created the correct "
                 f"accesses. Error messages were: {error_messages}")
 
-        ce = self.main.get_cluster_environment()
+        ce = self.main.get_cluster_environment(self.cluster_environment)
         ce.check("Online", "Online", "True")
 
         logger.log_exit("All checks passed")

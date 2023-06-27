@@ -83,9 +83,11 @@ class MainCluster(PrimazaCluster):
         ce.create()
         return ce
 
-    def get_cluster_environment(self) -> ClusterEnvironment:
-        ce = ClusterEnvironment(self.kubeconfig.get_api_client(),
-                                self.namespace)
+    def get_cluster_environment(self, name) -> ClusterEnvironment:
+        ce = ClusterEnvironment(
+                api_client=self.kubeconfig.get_api_client(),
+                namespace=self.namespace,
+                name=name)
         ce.find()
         return ce
 
