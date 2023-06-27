@@ -68,6 +68,14 @@ For information about primaza see: [Primaza readme](https://github.com/primaza/p
 - a certificate manager available in the cluster on which primaza tenant will be installed.
   - `make kind cluster` installs a certificate manager.
 
+## GitHub Authentication
+
+Some commands may need to use GitHub's API, e.g. to fetch Primaza's manifests.
+GitHub's limits for anonymous calls to its API is very strict.
+To increase the limit, you need to authenticate.
+`primazactl` can authorize requests by fetching the `GITHUB_TOKEN` environment variable and using its content to authenticate with GitHub.
+The `GITHUB_TOKEN` environment variable needs to contain a valid [GitHub Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
+
 ## Help
 
 Primazactl help is organized in a hierarchy with contextual help available for different commands:
