@@ -4,4 +4,4 @@ PyYAML==6.0
 semver==2.13.0
 kubernetes==25.3.0
 kubeconfig==1.1.1
-PyGithub==1.55
+PyGithub==1.59

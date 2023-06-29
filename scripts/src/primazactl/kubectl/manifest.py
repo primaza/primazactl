@@ -1,8 +1,8 @@
-
+import os
 import yaml
 from kubernetes import client
 from primazactl.utils import logger
-from github import Github
+from github import Auth, Github
 import semver
 import requests
 from.constants import REPOSITORY
@@ -87,9 +87,18 @@ class Manifest(object):
             logger.log_error(msg)
             raise RuntimeError(msg)
 
+    def build_github_client(self) -> Github:
+        token = os.getenv("GITHUB_TOKEN", None)
+        if not token:
+            return Github()
+
+        auth = Auth.Token(token)
+        return Github(auth=auth)
+
     def __set_config_content(self):
         logger.log_entry()
-        g = Github()
+
+        g = self.build_github_client()
         repo = g.get_repo(REPOSITORY)
 
         releases = repo.get_releases()
