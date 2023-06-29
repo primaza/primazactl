@@ -80,11 +80,13 @@ class CustomNamespaced(object):
         logger.log_entry(f"namespace: {self.name}")
 
         try:
-            list = self.custom.list_namespaced_custom_object(self.group,
-                                                             self.version,
-                                                             self.namespace,
-                                                             self.plural)
-            self.body = list["items"][0]
+            obj = self.custom.get_namespaced_custom_object(
+                    self.group,
+                    self.version,
+                    self.namespace,
+                    self.plural,
+                    self.name)
+            self.body = obj
             self.name = self.body["metadata"]["name"]
             self.namespace = self.body["metadata"]["namespace"]
             logger.log_info(f"found: {self.name} in "
