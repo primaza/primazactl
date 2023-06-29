@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: primaza-worker-admin
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: primaza-worker-admin-role
+  namespace: kube-system
+rules:
+- apiGroups:
+    - ""
+  resources:
+    - secrets
+    - serviceaccounts
+  verbs:
+    - get
+    - create
+    - update
+    - delete
+- apiGroups:
+    - primaza.io
+  resources:
+    - clusterenvironments
+    - registeredservices
+    - servicebindings
+    - servicecatalogs
+    - serviceclaims
+    - serviceclasses
+  verbs:
+    - create
+    - delete
+    - get
+    - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: primaza-admin-rolebinding
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: primaza-worker-admin-role
+subjects:
+  - kind: ServiceAccount
+    name: primaza-worker-admin
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: primaza-worker-admin-cluster-role
+rules:
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - create
+      - delete
+      - get
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: primaza-worker-admin-cluster-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: primaza-worker-admin-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: primaza-worker-admin
+    namespace: kube-system

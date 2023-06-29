@@ -208,6 +208,23 @@ test-released:
 	make kind-clusters
 	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -v $(VERSION) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME)
 
+.PHONY: test-users
+test-users: setup-test create-users
+	$(PYTHON_VENV_DIR)/bin/primazatest -u -i $(OUTPUT_DIR)/users -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+
+.PHONY: create-users
+create-users: primazactl
+	-rm -rf $(OUTPUT_DIR)/users
+	$(PYTHON_VENV_DIR)/bin/primazauser tenant -c $(KUBE_KIND_CLUSTER_TENANT_NAME) -o $(OUTPUT_DIR)/users
+	$(PYTHON_VENV_DIR)/bin/primazauser tenant-bad -c $(KUBE_KIND_CLUSTER_TENANT_NAME) -o $(OUTPUT_DIR)/users
+	$(PYTHON_VENV_DIR)/bin/primazauser worker -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
+	$(PYTHON_VENV_DIR)/bin/primazauser worker-bad -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
+	$(PYTHON_VENV_DIR)/bin/primazauser application-agent -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
+	$(PYTHON_VENV_DIR)/bin/primazauser application-agent-bad -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
+	$(PYTHON_VENV_DIR)/bin/primazauser service-agent -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
+	$(PYTHON_VENV_DIR)/bin/primazauser service-agent-bad -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
+
+
 .PHONY: test
 test: setup-test test-local test-released
 

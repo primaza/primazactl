@@ -1,5 +1,4 @@
 from .constants import WORKER_NAMESPACE
-from kubernetes import client
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.kubectl.constants import WORKER_CONFIG
@@ -56,14 +55,6 @@ class WorkerCluster(PrimazaCluster):
 
     def install_worker(self):
         logger.log_entry()
-        # need an agnostic way to get the kubeconfig - get as a parameter
-
-        api_client = self.kubeconfig.get_api_client()
-        corev1 = client.CoreV1Api(api_client)
-        api_response = corev1.list_namespace()
-        for item in api_response.items:
-            logger.log_info(f"Namespace: {item.metadata.name} is "
-                            f"make lint{item.status.phase}")
 
         if not self.context:
             self.context = self.kubeconfig.context

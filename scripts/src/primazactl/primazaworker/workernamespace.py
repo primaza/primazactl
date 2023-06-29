@@ -28,6 +28,7 @@ class WorkerNamespace(PrimazaCluster):
                  namespace,
                  cluster_environment,
                  worker_cluster,
+                 kubeconfig_file,
                  role_config,
                  version,
                  main,
@@ -42,7 +43,7 @@ class WorkerNamespace(PrimazaCluster):
                          worker_cluster,
                          f"primaza-{self.type}-agent",
                          self.user_type,
-                         None,
+                         kubeconfig_file,
                          role_config,
                          cluster_environment,
                          worker.tenant)
@@ -66,8 +67,8 @@ class WorkerNamespace(PrimazaCluster):
                          f"worker cluster: {self.worker.context}")
 
         # On worker cluster
-        # - create the namespace
-        self.kube_namespace.create()
+        # - create the namespace and resources from manifest
+        self.install_config(self.manifest)
 
         # Request a new service account from primaza main
         main_identity = self.main.create_primaza_identity(
@@ -83,14 +84,6 @@ class WorkerNamespace(PrimazaCluster):
         #     and the kubeconfig for authenticating with the Primaza cluster.
 
         self.create_namespaced_kubeconfig_secret(kc, self.main.namespace)
-
-        # - In the created namespace, create the Role for the
-        #   agent (named for example primaza-application-agent or
-        #   primaza-service-agent), that will grant it access to
-        #   namespace and its resources
-        # - In the created namespace, create a RoleBinding for binding
-        #   the agents' Service Account to the role defined above
-        self.install_config(self.manifest)
 
         # - In the created namespace, create a Role (named
         #   primaza-application or primaza-service), that will grant

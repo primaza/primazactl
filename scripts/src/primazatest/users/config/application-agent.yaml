@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: primaza-app-agent-admin
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: primaza-app-agent-admin-cluster-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - serviceaccounts
+    verbs:
+      - get
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+      - delete
+      - update
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - get
+      - list
+      - update
+      - delete
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+    verbs:
+      - create
+      - get
+      - delete
+      - update
+  - apiGroups:
+      - primaza.io
+    resources:
+      - servicebindings
+      - servicecatalogs
+      - serviceclasses
+    verbs:
+      - create
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - primaza.io
+    resources:
+      - serviceclaims
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - primaza.io
+    resources:
+      - serviceclaims/status
+      - servicebindings/status
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - primaza.io
+    resources:
+      - servicebindings/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - primaza.io
+    resources:
+      - registeredservices
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - apps
+    resourceNames:
+      - primaza-app-agent
+    resources:
+      - deployments
+      - deployments/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+      - get
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: primaza-app-agent-admin-cluster-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: primaza-app-agent-admin-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: primaza-app-agent-admin
+    namespace: kube-system

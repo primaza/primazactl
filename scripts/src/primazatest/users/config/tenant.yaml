@@ -1,0 +1,217 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tenant-admin
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-admin-cluster-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - serviceaccounts
+      - services
+    verbs:
+      - get
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+      - update
+      - delete
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - create
+      - get
+      - delete
+      - update
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - create
+      - get
+      - delete
+      - update
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+    verbs:
+      - create
+      - get
+      - delete
+      - update
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - rolebindings
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - validatingwebhookconfigurations
+    verbs:
+      - create
+      - get
+      - delete
+      - update
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - selfsubjectaccessreviews
+      - subjectaccessreviews
+    verbs:
+      - create
+      - get
+      - delete
+  - apiGroups:
+      - primaza.io
+    resources:
+      - servicebindings
+    verbs:
+      - create
+      - get
+      - delete
+      - update
+  - apiGroups:
+      - primaza.io
+    resources:
+      - clusterenvironments
+      - registeredservices
+      - servicecatalogs
+      - serviceclaims
+      - serviceclasses
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - primaza.io
+    resources:
+      - clusterenvironments/finalizers
+      - registeredservices/finalizers
+      - servicecatalogs/finalizers
+      - serviceclaims/finalizers
+      - serviceclasses/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - primaza.io
+    resources:
+      - clusterenvironments/status
+      - registeredservices/status
+      - servicecatalogs/status
+      - serviceclaims/status
+      - serviceclasses/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - primaza.io.primaza.io
+    resources:
+      - servicecatalogs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - primaza.io.primaza.io
+    resources:
+      - servicecatalogs/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - primaza.io.primaza.io
+    resources:
+      - servicecatalogs/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - cert-manager.io
+    resources:
+      - issuers
+      - certificates
+    verbs:
+      - create
+      - delete
+      - get
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tenant-admin-cluster-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tenant-admin-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: tenant-admin
+    namespace: kube-system
