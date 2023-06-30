@@ -92,17 +92,20 @@ Primazactl help is organized in a hierarchy with contextual help available for d
 ## Command Summary
 
 - Create tenant
+  - checks user has the permissions required to run the command.
   - creates a specified namespace, default is `primaza-system`.
     - control-plane `primaza-controller-manager`
     - default image installed: `ghcr.io/primaza/primaza:latest`
-  - adds kubernetes resources required by primaza tenant.  
+  - adds kubernetes resources required by primaza tenant.
 - Join cluster
     - requires tenant to be created first.
+    - checks user has the permissions required to run the command.    
     - add kubernetes resources required to join a cluster.
     - creates an [identity](docs/identities.md#identities) which is shared with the primaza tenant.   
     - creates a cluster-environment resource in primaza tenant to enable communication with the joined cluster.
 - Create application-namespace.
     - requires join cluster to be complete first.
+    - checks user has the permissions required to run the command.
     - creates a specified namespace, default is `primaza-application`.
     - creates an [identity](docs/identities.md#identities) in the primaza tenant namespace which is shared with the application namespace.
         - enables primaza tenant to access the namespace
@@ -110,6 +113,7 @@ Primazactl help is organized in a hierarchy with contextual help available for d
     - provides join cluster primaza service account with access to the namespace
 - Create service-namespace.
     - requires join cluster to be complete first.
+    make p- checks user has the permissions required to run the command.
     - creates a specified namespace, default is `primaza-service`.
     - creates an [identity](docs/identities.md#identities) in the primaza tenant namespace which is shared with the service namespace.
         - enables primaza tenant to access the namespace
@@ -156,6 +160,7 @@ options:
  - `--kubeconfig KUBECONFIG` 
     - The kubeconfig file is not modified by primazactl.
     - The cluster specified for main install does not have to be the current context.
+    - Default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
  - `--version VERSION`
     - Specify the version of manifests to use.
         - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.    
@@ -178,7 +183,7 @@ options:
   -c CONTEXT, --context CONTEXT
                         name of cluster, as it appears in kubeconfig, on which primaza tenant was created, default: current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
 ```
 
 ### Delete tenant options
@@ -208,13 +213,13 @@ options:
   -c CONTEXT, --context CONTEXT
                         name of cluster, as it appears in kubeconfig, to join, default: current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -e ENVIRONMENT, --environment ENVIRONMENT
                         the Environment that will be associated to the ClusterEnvironment
   -l MAIN_KUBECONFIG, --tenant-kubeconfig MAIN_KUBECONFIG
-                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
   -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which primaza tenant was created. Default: current kubeconfig context
   -t TENANT, --tenant TENANT
@@ -238,6 +243,7 @@ options:
 - `--kubeconfig KUBECONFIG`
     - The kubeconfig file is not modified by primazactl.
     - The cluster specified for worker join does not have to be the current context.
+    - Default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
 - `--version VERSION`
     - Specify the version of manifests to use.
         - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.
@@ -247,8 +253,10 @@ options:
     - name to be used for the cluster environment resource created in the primaza-main namespace.
 - `--environment ENVIRONMENT`
     - the name that will be associated to the ClusterEnvironment,
-- `--tenant-kubeconfig MAIN_KUBECONFIG`
-    - only set if the cluster on which primaza tenant installed is in a different kubeconfig file from the one set using the `--kubeconfig` option.
+- `--tenant-kubeconfig TENANT_KUBECONFIG`
+    - path to kubeconfig file for the tenant
+    - default: KUBECONFIG environment variable if set, otherwise
+      /<home directory>/.kube/config
 - `--tenant-context TENANT_CONTEXT`
     - only set if cluster on which primaza tenant is installed is different from the one set using the `--context` option.
 - `--tenant tenant`
@@ -283,6 +291,11 @@ options:
                         tenant to use. Default: primaza-system
   -v VERSION, --version VERSION
                         Version of primaza to use, default: latest. Ignored if --config is set.
+  -k KUBECONFIG, --kubeconfig KUBECONFIG
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+  -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
+                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
+                        /<home directory>/.kube/config                      
 ```
 
 ### Create application-namespace options: 
@@ -309,6 +322,15 @@ options:
         - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.
         - Ignored if a config file is set.
         - Default is the version used to build primazactl.
+- `--kubeconfig KUBECONFIG`
+    - The kubeconfig file is not modified by primazactl.
+    - The cluster specified for worker join does not have to be the current context. 
+    - default: KUBECONFIG environment variable if set, otherwise
+      /<home directory>/.kube/config
+- `--tenant-kubeconfig TENANT_KUBECONFIG`
+    - path to kubeconfig file for the tenant 
+    - default: KUBECONFIG environment variable if set, otherwise
+      /<home directory>/.kube/config
     
 
 ## Create service namespace command
@@ -335,7 +357,12 @@ options:
   -t TENANT, --tenant TENANT
                         tenant to use. Default: primaza-system
   -v VERSION, --version VERSION
-                        Version of primaza to use, default: latest. Ignored if --config is set.                                                
+                        Version of primaza to use, default: latest. Ignored if --config is set.
+  -k KUBECONFIG, --kubeconfig KUBECONFIG
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+  -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
+                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
+                        /<homedirectory>/.kube/config                                                                                              
 ```
 
 ### Create service-namespace options: 
@@ -362,13 +389,26 @@ options:
         - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.
         - Ignored if a config file is set.
         - Defaults to the version used to build primazactl.
+- `--kubeconfig KUBECONFIG`
+    - The kubeconfig file is not modified by primazactl.
+    - The cluster specified for worker join does not have to be the current context.
+- `--tenant-kubeconfig TENANT_KUBECONFIG`
+  path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
+  /<home directory>/.kube/config    
     
 # Testing
 
-- To run the tests run `make test`
+- To run the basic tests run `make test-local`
   - This will:
     - run `make setup-test`
     - run the test:  `out/venv3/bin/primazatest`
+        - src script is `scripts/src/promazatest/runtest.sh`
+        - requires inputs: python virtual environment directory, the primaza configuration file and the cluster names.
+- To run the test with users run `make test-users` 
+    - This will:
+    - run `make setup-test`
+    - run `make create-users`  
+    - run the test:  `out/venv3/bin/primazatest -u`
         - src script is `scripts/src/promazatest/runtest.sh`
         - requires inputs: python virtual environment directory, the primaza configuration file and the cluster names.
 - To set up the test environment run `make setup-test` 
