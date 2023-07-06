@@ -2,6 +2,9 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 from primazactl.utils import logger
 from typing import Dict, List
+from primazactl.utils import settings
+import yaml
+import copy
 
 
 class Secret(object):
@@ -27,33 +30,59 @@ class Secret(object):
         logger.log_entry(f"Secret name: {self.name}, "
                          f"namespace: {self.namespace}")
 
-        if not self.read():
-            if not secret:
-                secret = client.V1Secret(
-                    metadata=client.V1ObjectMeta(
-                        name=self.name,
-                        namespace=self.namespace,
-                        labels={"app.kubernetes.io/component": "coreV1",
-                                "app.kubernetes.io/created-by": "primaza",
-                                "app.kubernetes.io/instance": self.name,
-                                "app.kubernetes.io/managed-by": "primazactl",
-                                "app.kubernetes.io/name": "secret",
-                                "app.kubernetes.io/part-of": "primaza",
-                                "primaza.io/tenant": self.tenant},
-                        owner_references=self.owners,
-                        ),
-                    string_data={
-                        "kubeconfig": self.kubeconfig,
-                        "namespace": self.tenant,
-                    })
+        if not secret:
+            secret = client.V1Secret(
+                metadata=client.V1ObjectMeta(
+                    name=self.name,
+                    namespace=self.namespace,
+                    labels={"app.kubernetes.io/component": "coreV1",
+                            "app.kubernetes.io/created-by": "primaza",
+                            "app.kubernetes.io/instance": self.name,
+                            "app.kubernetes.io/managed-by": "primazactl",
+                            "app.kubernetes.io/name": "secret",
+                            "app.kubernetes.io/part-of": "primaza",
+                            "primaza.io/tenant": self.tenant},
+                    owner_references=self.owners,
+                ),
+                string_data={
+                    "kubeconfig": self.kubeconfig,
+                    "namespace": self.tenant,
+                })
 
+        if settings.output_yaml:
+            print_secret = copy.deepcopy(secret)
+            print_secret.string_data = {
+                "kubeconfig": "xxxxx-hidden",
+                "namespace": self.tenant,
+            }
+            settings.add_resource(print_secret.to_dict())
+            settings.add_warning(f'Secret {self.name}: \"kubeconfig\" '
+                                 'attribute modified to hide secrets')
+
+        if not self.read():
             try:
-                self.corev1.create_namespaced_secret(namespace=self.namespace,
-                                                     body=secret)
+                if settings.dry_run:
+                    self.corev1.create_namespaced_secret(
+                        namespace=self.namespace,
+                        body=secret, dry_run="All")
+                else:
+                    self.corev1.create_namespaced_secret(
+                        namespace=self.namespace,
+                        body=secret)
+                logger.log_info('SUCCESS: create of Secret '
+                                f'{secret.metadata.name}',
+                                settings.dry_run)
             except ApiException as e:
-                logger.log_error("Exception when calling "
-                                 "create_namespaced_secret: %s\n" % e)
-                raise e
+                body = yaml.safe_load(e.body)
+                logger.log_error('FAILED: create of Secret '
+                                 f'{secret.metadata.name} '
+                                 f'Exception: {body["message"]}')
+                if not settings.dry_run:
+                    raise e
+        else:
+            logger.log_info('UNCHANGED: create of secret '
+                            f'{secret.metadata.name} already exists',
+                            settings.dry_run)
 
     def read(self) -> client.V1Secret | None:
         logger.log_entry(f"Secret name: {self.name}, "

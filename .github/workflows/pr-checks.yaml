@@ -27,8 +27,15 @@ jobs:
       - name: Lint python
         run: make lint
 
+      - name: run dry-run
+        run: make test-dry-run
+
       - name: run test
-        run: make test-local
+        run: make test-local-no-setup
 
       - name: run test with users
         run: make test-users
+
+      - name: run test with output
+        run: make test-output
+

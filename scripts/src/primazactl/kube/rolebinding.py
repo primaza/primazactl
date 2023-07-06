@@ -1,6 +1,8 @@
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from primazactl.utils import logger
+from primazactl.utils import settings
+import yaml
 
 
 class RoleBinding(object):
@@ -28,36 +30,52 @@ class RoleBinding(object):
                          f"namespace : {self.namespace}, "
                          f"service account: {self.service_account}")
 
+        binding = client.V1RoleBinding(
+            kind="RoleBinding",
+            metadata=client.V1ObjectMeta(
+                name=self.name,
+                namespace=self.namespace,
+                labels={"app.kubernetes.io/component": "coreV1",
+                        "app.kubernetes.io/created-by": "primaza",
+                        "app.kubernetes.io/instance":
+                            self.name.replace(":", "-"),
+                        "app.kubernetes.io/managed-by": "primazactl",
+                        "app.kubernetes.io/name": "rolebinding",
+                        "app.kubernetes.io/part-of": "primaza"}),
+            role_ref=client.V1RoleRef(
+                api_group="rbac.authorization.k8s.io",
+                kind="Role",
+                name=self.user),
+            subjects=[
+                client.V1Subject(namespace=self.service_account_namespace,
+                                 kind="ServiceAccount",
+                                 name=self.service_account),
+            ])
+        settings.add_resource(binding.to_dict())
         if not self.read():
-            binding = client.V1RoleBinding(
-                kind="RoleBinding",
-                metadata=client.V1ObjectMeta(
-                    name=self.name,
-                    namespace=self.namespace,
-                    labels={"app.kubernetes.io/component": "coreV1",
-                            "app.kubernetes.io/created-by": "primaza",
-                            "app.kubernetes.io/instance":
-                                self.name.replace(":", "-"),
-                            "app.kubernetes.io/managed-by": "primazactl",
-                            "app.kubernetes.io/name": "rolebinding",
-                            "app.kubernetes.io/part-of": "primaza"}),
-                role_ref=client.V1RoleRef(
-                    api_group="rbac.authorization.k8s.io",
-                    kind="Role",
-                    name=self.user),
-                subjects=[
-                    client.V1Subject(namespace=self.service_account_namespace,
-                                     kind="ServiceAccount",
-                                     name=self.service_account),
-                ])
             try:
-                self.rbac.create_namespaced_role_binding(
-                    namespace=self.namespace,
-                    body=binding)
+                if settings.dry_run:
+                    self.rbac.create_namespaced_role_binding(
+                        namespace=self.namespace,
+                        body=binding, dry_run="All")
+                else:
+                    self.rbac.create_namespaced_role_binding(
+                        namespace=self.namespace,
+                        body=binding)
+                logger.log_info('SUCCESS: create of RoleBinding '
+                                f'{binding.metadata.name}',
+                                settings.dry_run)
             except ApiException as e:
-                logger.log_error("Exception when calling "
-                                 "create_cluster_role_binding: %s\n" % e)
-                raise e
+                body = yaml.safe_load(e.body)
+                logger.log_error('FAILED: create of RoleBinding '
+                                 f'{binding.metadata.name} '
+                                 f'Exception: {body["message"]}')
+                if not settings.dry_run:
+                    raise e
+        else:
+            logger.log_info('UNCHANGED: create of RoleBinding '
+                            f'{binding.metadata.name} already exists',
+                            settings.dry_run)
 
     def read(self) -> client.V1RoleBinding | None:
         logger.log_entry(f"Name: {self.name}, user {self.user}")

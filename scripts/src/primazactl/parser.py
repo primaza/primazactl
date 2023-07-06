@@ -30,6 +30,19 @@ def build_parser() -> argparse.ArgumentParser:
         required=False,
         action="count",
         help="Set for verbose output")
+    base_subparser.add_argument(
+        "-y", "--dry-run",
+        dest="dry_run",
+        required=False,
+        action="count",
+        help="Set for dry run")
+    base_subparser.add_argument(
+        "-o", "--output",
+        dest="output_yaml",
+        type=str,
+        required=False,
+        choices=["yaml"],
+        help="Set to get output of resources which are created")
 
     subparsers = parser.add_subparsers()
     create_add_group(subparsers, parents=[base_subparser])

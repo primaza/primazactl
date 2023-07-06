@@ -1,6 +1,7 @@
 from primazactl.utils import logger
 from primazactl.cmd.create.namespace.constants import APPLICATION
 from primazactl.kube.customnamespaced import CustomNamespaced
+from primazactl.utils import settings
 
 
 def create_body(name, namespace, environment, secret_name):
@@ -65,9 +66,12 @@ class ClusterEnvironment(CustomNamespaced):
         self.patch(self.body)
 
     def check(self, state, ctype, cstatus):
-        self.check_state(state)
-        self.check_status_condition(ctype, cstatus)
-        self.check_status_condition("ApplicationNamespacePermissionsRequired",
-                                    "False")
-        self.check_status_condition("ServiceNamespacePermissionsRequired",
-                                    "False")
+        if not settings.dry_run:
+            self.check_state(state)
+            self.check_status_condition(ctype, cstatus)
+            self.check_status_condition(
+                "ApplicationNamespacePermissionsRequired",
+                "False")
+            self.check_status_condition(
+                "ServiceNamespacePermissionsRequired",
+                "False")

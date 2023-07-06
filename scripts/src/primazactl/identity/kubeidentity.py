@@ -1,5 +1,6 @@
 import base64
 import polling2
+import uuid
 import yaml
 from typing import Dict
 from kubernetes import client
@@ -7,6 +8,7 @@ from primazactl.utils import logger
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 from primazactl.kube.serviceaccount import ServiceAccount
 from primazactl.kube.secret import Secret
+from primazactl.utils import settings
 
 
 class KubeIdentity(object):
@@ -80,6 +82,10 @@ class KubeIdentity(object):
         """
         logger.log_entry(f"sa_name: {self.sa_name} "
                          f"namespace: {self.namespace}")
+
+        if settings.dry_run:
+            return {"token": "000000"}
+
         corev1 = client.CoreV1Api(self.api_client)
 
         secret = polling2.poll(
@@ -108,11 +114,15 @@ class KubeIdentity(object):
         service_account.create()
         sa = service_account.read()
 
+        owner_uid = sa.metadata.uid \
+            if sa.metadata.uid else str(uuid.uuid4())
+
         ownership = client.V1OwnerReference(
             api_version=sa.api_version,
             kind=sa.kind,
             name=sa.metadata.name,
-            uid=sa.metadata.uid)
+            uid=owner_uid
+        )
 
         id_key = client.V1Secret(
             metadata=client.V1ObjectMeta(

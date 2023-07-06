@@ -5,6 +5,7 @@ from primazactl.cmd.create.common import add_shared_args
 from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.types import kubernetes_name
+from primazactl.utils import settings
 
 
 def add_create_tenant(
@@ -32,16 +33,24 @@ def add_args_tenant(parser: argparse.ArgumentParser):
 
 def create_tenant(args):
     try:
+        settings.set(args)
         MainCluster(
             args.context,
             args.tenant,
             args.kubeconfig,
             args.config,
             args.version).install_primaza()
-        print("Primaza main installed")
+
+        if settings.output_yaml:
+            settings.output()
+        elif settings.dry_run:
+            print("Dry run Primaza tenant install complete")
+        else:
+            print("Primaza tenant installed")
+
     except Exception as e:
         if args.verbose:
             print(traceback.format_exc())
-            print(f"\nAn exception occurred executing main install: {e}",
+            print(f"\nAn exception occurred executing tenant install: {e}",
                   file=sys.stderr)
         raise e

@@ -1,4 +1,5 @@
 import yaml
+import uuid
 from typing import Dict
 from kubernetes import client
 from primazactl.utils import logger
@@ -10,6 +11,7 @@ from primazactl.kube.access.accessreview import AccessReview
 from primazactl.utils import kubeconfig
 from primazactl.utils.kubeconfigwrapper import KubeConfigWrapper
 from primazactl.utils import names
+from primazactl.utils import settings
 
 
 class PrimazaCluster(object):
@@ -104,12 +106,20 @@ class PrimazaCluster(object):
                         self.namespace, kubeconfig, tenant)
 
         if cluster_environment is not None:
-            owner = self.read_clusterenvironment(tenant, cluster_environment)
-            secret.owners = [client.V1OwnerReference(
-                api_version=owner["apiVersion"],
-                kind=owner["kind"],
-                name=owner["metadata"]["name"],
-                uid=owner["metadata"]["uid"])]
+            if settings.dry_run:
+                secret.owners = [client.V1OwnerReference(
+                    api_version="primaza.io/v1alpha",
+                    kind="cluster_environment",
+                    name="dry_run",
+                    uid=str(uuid.uuid4()))]
+            else:
+                owner = self.read_clusterenvironment(tenant,
+                                                     cluster_environment)
+                secret.owners = [client.V1OwnerReference(
+                    api_version=owner["apiVersion"],
+                    kind=owner["kind"],
+                    name=owner["metadata"]["name"],
+                    uid=owner["metadata"]["uid"])]
 
         secret.create()
         return secret_name
@@ -120,6 +130,9 @@ class PrimazaCluster(object):
     def check_service_account_roles(self, service_account_name,
                                     role_name, role_namespace):
         logger.log_entry(self.namespace)
+        if settings.dry_run:
+            return []
+
         api_client = self.kubeconfig.get_api_client()
         ar = AccessReview(api_client,
                           service_account_name,

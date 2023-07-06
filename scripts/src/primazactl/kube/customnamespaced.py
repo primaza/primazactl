@@ -3,6 +3,7 @@ from kubernetes.client.rest import ApiException
 import polling2
 import yaml
 from primazactl.utils import logger
+from primazactl.utils import settings
 
 
 class CustomNamespaced(object):
@@ -33,17 +34,38 @@ class CustomNamespaced(object):
 
         logger.log_entry(f"name: {self.name}, namespace: {self.namespace}")
 
+        settings.add_resource(self.body)
         if not self.read():
             try:
-                self.custom.create_namespaced_custom_object(self.group,
-                                                            self.version,
-                                                            self.namespace,
-                                                            self.plural,
-                                                            self.body)
+                if settings.dry_run:
+                    self.custom.create_namespaced_custom_object(
+                        self.group,
+                        self.version,
+                        self.namespace,
+                        self.plural,
+                        self.body,
+                        dry_run="All")
+                else:
+                    self.custom.create_namespaced_custom_object(
+                        self.group,
+                        self.version,
+                        self.namespace,
+                        self.plural,
+                        self.body)
+                logger.log_info(f'SUCCESS: create of {self.body["kind"]} '
+                                f'{self.body["metadata"]["name"]}',
+                                settings.dry_run)
             except ApiException as e:
-                logger.log_error("Exception when calling "
-                                 "create_namespaced_custom_object: %s\n" % e)
-                raise e
+                body = yaml.safe_load(e.body)
+                logger.log_error(f'FAILED: create of {self.body["kind"]} '
+                                 f'{self.body["metadata"]["name"]} '
+                                 f'Exception: {body}')
+                if not settings.dry_run:
+                    raise e
+        else:
+            logger.log_info(f'UNCHANGED: {self.body["kind"]} '
+                            f'{self.body["name"]} already exists',
+                            settings.dry_run)
 
     def read(self) -> client.V1Namespace | None:
         logger.log_entry(f"name: {self.name}, namespace: {self.namespace}")

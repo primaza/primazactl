@@ -1,7 +1,7 @@
 import os
 import yaml
 from kubernetes import client
-from primazactl.utils import logger
+from primazactl.utils import logger, settings
 from github import Auth, Github
 import semver
 import requests
@@ -81,11 +81,13 @@ class Manifest(object):
         errors = apply_manifest(body_list, api_client, action)
         if len(errors) > 0:
             msg = f"error performing {action} with config " \
-                  f"{self.type} into namespace {self.namespace} " \
-                  f"{errors}"
+                  f"{self.type} into namespace {self.namespace}"
+            for error in errors:
+                msg += f"\n{error}"
 
-            logger.log_error(msg)
-            raise RuntimeError(msg)
+            logger.log_error(msg, not settings.dry_run)
+            if not settings.dry_run:
+                raise RuntimeError(msg)
 
     def build_github_client(self) -> Github:
         token = os.getenv("GITHUB_TOKEN", None)

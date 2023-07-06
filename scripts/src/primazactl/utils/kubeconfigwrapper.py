@@ -90,7 +90,9 @@ class KubeConfigWrapper(object):
                 break
 
         if "clusters" not in cluster_config:
-            msg = f"Error cluster {self.context} not found in kube config: " \
+            context = self.context if not context_cluster \
+                else context_cluster
+            msg = f"Error cluster {context} not found in kube config: " \
                   f"{self.kube_config_file}"
             logger.log_error(msg)
             raise RuntimeError(f"[ERROR] {msg}")

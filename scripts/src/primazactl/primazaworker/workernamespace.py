@@ -1,5 +1,6 @@
 from primazactl.utils import logger
 from primazactl.utils import names
+from primazactl.utils import settings
 from primazactl.kube.namespace import Namespace
 from primazactl.kube.role import Role
 from primazactl.kube.rolebinding import RoleBinding
@@ -110,15 +111,19 @@ class WorkerNamespace(PrimazaCluster):
                                       sa_name)
         primaza_binding.create()
 
-        ce = self.main.get_cluster_environment(self.cluster_environment)
-        ce.add_namespace(self.type, self.namespace)
-        logger.log_info(f"ce:{ce.body}")
+        if not settings.dry_run:
+            ce = self.main.get_cluster_environment(self.cluster_environment)
+            ce.add_namespace(self.type, self.namespace)
+            logger.log_info(f"ce:{ce.body}")
 
     def check(self):
         logger.log_entry(f"Cluster: {self.context}, "
                          f"Namespace {self.namespace}")
 
         error_messages = []
+        if settings.dry_run:
+            return error_messages
+
         if self.type == APPLICATION:
             error_message = self.check_service_account_roles(
                 "primaza-app-agent",

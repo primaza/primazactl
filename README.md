@@ -128,7 +128,7 @@ Primazactl help is organized in a hierarchy with contextual help available for d
 
 ### Create tenant help
 ```
-usage: primazactl create tenant [-h] [-x] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] tenant
+usage: primazactl create tenant [-h] [-x] [-y] [-o {yaml}] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] [tenant]
 
 positional arguments:
   tenant                tenant to create. Default: primaza-system
@@ -136,6 +136,9 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
+  -y, --dry-run         Set for dry run
+  -o {yaml}, --output {yaml}
+                        Set to get output of resources which are created
   -f CONFIG, --config CONFIG
                         primaza config file. Takes precedence over --version
   -v VERSION, --version VERSION
@@ -143,7 +146,7 @@ options:
   -c CONTEXT, --context CONTEXT
                         name of cluster, as it appears in kubeconfig, on which to create the tenant, default: current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
 ```
 ### Create tenant options
  - `--config CONFIG`:
@@ -170,6 +173,12 @@ options:
         - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.    
         - Ignored if a config file is set.
         - defaults to the version used to build primazactl.
+ - `--output yaml`
+    - Outputs the manifests of the resources that are created.
+    - The content will be as used for creating the resource.
+ - `--dry-run`
+    - Resources will be created with dry-run and will not be persisted.
+    - Output provides the outcome for each resource created. 
 
 ## Delete tenant command
 
@@ -205,11 +214,15 @@ Notes:
 
 ### Join cluster help
 ```
-usage: primazactl join cluster [-h] [-x] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] -d CLUSTER_ENVIRONMENT -e ENVIRONMENT [-l MAIN_KUBECONFIG] [-m TENANT_CONTEXT] [-t TENANT]
+usage: primazactl join cluster [-h] [-x] [-y] [-o {yaml}] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] -d CLUSTER_ENVIRONMENT -e ENVIRONMENT
+                               [-l TENANT_KUBECONFIG] [-m TENANT_CONTEXT] [-t TENANT]
 
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
+  -y, --dry-run         Set for dry run
+  -o {yaml}, --output {yaml}
+                        Set to get output of resources which are created
   -f CONFIG, --config CONFIG
                         primaza config file. Takes precedence over --version
   -v VERSION, --version VERSION
@@ -222,8 +235,9 @@ options:
                         name to use for the ClusterEnvironment that will be created in Primaza
   -e ENVIRONMENT, --environment ENVIRONMENT
                         the Environment that will be associated to the ClusterEnvironment
-  -l MAIN_KUBECONFIG, --tenant-kubeconfig MAIN_KUBECONFIG
-                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
+  -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
+                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
+                        /<home directory>/.kube/config
   -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which primaza tenant was created. Default: current kubeconfig context
   -t TENANT, --tenant TENANT
@@ -266,6 +280,13 @@ options:
 - `--tenant tenant`
     - Tenant used for the join.
     - Default is `primaza-system`.
+-  `--output yaml`
+    - Outputs the manifests of the resources that are created.
+    - The content will be as used for creating the resource.
+- `--dry-run`
+    - Resources will be created with dry-run and will not be persisted.
+    - Output provides the outcome for each resource created.
+
     
 
 ## Create application namespace command
@@ -275,7 +296,9 @@ Notes:
 
 ### Create application-namespace help
 ```
-usage: primazactl create service-namespace [-h] [-x] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT] [-v VERSION] namespace
+usage: primazactl create application-namespace [-h] [-x] [-y] [-o {yaml}] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT]
+                                               [-v VERSION] [-k KUBECONFIG] [-l TENANT_KUBECONFIG]
+                                               namespace
 
 positional arguments:
   namespace             namespace to create
@@ -283,10 +306,14 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
+  -y, --dry-run         Set for dry run
+  -o {yaml}, --output {yaml}
+                        Set to get output of resources which are created
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -c CONTEXT, --context CONTEXT
-                        name of cluster, as it appears in kubeconfig, on which to create the service or application namespace, default: current kubeconfig context
+                        name of cluster, as it appears in kubeconfig, on which to create the service or application namespace, default: current
+                        kubeconfig context
   -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which Primaza tenant was created. Default: current kubeconfig context
   -f CONFIG, --config CONFIG
@@ -296,7 +323,7 @@ options:
   -v VERSION, --version VERSION
                         Version of primaza to use, default: latest. Ignored if --config is set.
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
   -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
                         path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
                         /<home directory>/.kube/config                      
@@ -335,6 +362,13 @@ options:
     - path to kubeconfig file for the tenant 
     - default: KUBECONFIG environment variable if set, otherwise
       /<home directory>/.kube/config
+-  `--output yaml`
+    - Outputs the manifests of the resources that are created.
+    - The content will be as used for creating the resource.
+- `--dry-run`
+    - Resources will be created with dry-run and will not be persisted.
+    - Output provides the outcome for each resource created.
+
     
 
 ## Create service namespace command
@@ -345,15 +379,24 @@ Notes:
     
 ### Create service-namespace help:
 ```
-usage: primazactl worker create service-namespace [-h] [-x] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG]
+usage: primazactl create service-namespace [-h] [-x] [-y] [-o {yaml}] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT]
+                                           [-v VERSION] [-k KUBECONFIG] [-l TENANT_KUBECONFIG]
+                                           namespace
+
+positional arguments:
+  namespace             namespace to create
 
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
+  -y, --dry-run         Set for dry run
+  -o {yaml}, --output {yaml}
+                        Set to get output of resources which are created
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -c CONTEXT, --context CONTEXT
-                        name of cluster, as it appears in kubeconfig, on which to create the service or application namespace, default: current kubeconfig context
+                        name of cluster, as it appears in kubeconfig, on which to create the service or application namespace, default: current
+                        kubeconfig context
   -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which Primaza tenant was created. Default: current kubeconfig context
   -f CONFIG, --config CONFIG
@@ -363,10 +406,10 @@ options:
   -v VERSION, --version VERSION
                         Version of primaza to use, default: latest. Ignored if --config is set.
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
   -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
                         path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
-                        /<homedirectory>/.kube/config                                                                                              
+                        /<home directory>/.kube/config                                                                                              
 ```
 
 ### Create service-namespace options: 
@@ -398,7 +441,14 @@ options:
     - The cluster specified for worker join does not have to be the current context.
 - `--tenant-kubeconfig TENANT_KUBECONFIG`
   path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
-  /<home directory>/.kube/config    
+  /<home directory>/.kube/config
+-  `--output yaml`
+    - Outputs the manifests of the resources that are created.
+    - The content will be as used for creating the resource.
+- `--dry-run`
+    - Resources will be created with dry-run and will not be persisted.
+    - Output provides the outcome for each resource created.
+
     
 # Testing
 
@@ -413,6 +463,18 @@ options:
     - run `make setup-test`
     - run `make create-users`  
     - run the test:  `out/venv3/bin/primazatest -u`
+        - src script is `scripts/src/primazatest/runtest.sh`
+        - requires inputs: python virtual environment directory, the primaza configuration file and the cluster names.
+- To run the test for dry-run run `make test-dry-run`
+  - This will:
+  - run `make setup-test`
+  - run the test:  `out/venv3/bin/primazatest -d`
+      - src script is `scripts/src/primazatest/runtest.sh`
+      - requires inputs: python virtual environment directory, the primaza configuration file and the cluster names.
+- To run the test for output of resources `make test-output`
+    - This will:
+    - run `make setup-test`
+    - run the test:  `out/venv3/bin/primazatest -o`
         - src script is `scripts/src/primazatest/runtest.sh`
         - requires inputs: python virtual environment directory, the primaza configuration file and the cluster names.
 - To set up the test environment run `make setup-test` 

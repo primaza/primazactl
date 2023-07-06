@@ -3,6 +3,7 @@ import subprocess
 import sys
 import time
 import os
+import yaml
 
 PASS = '\033[92mPASS\033[0m'
 SUCCESS = '\033[92mSUCCESS\033[0m'
@@ -12,6 +13,9 @@ FAILED = '\033[91mFAILED\033[0m'
 TENANT = "primaza-controller-system"
 SERVICE_NAMESPACE = "service-agent-system"
 APPLICATION_NAMESPACE = "application-agent-system"
+TENANT_FOR_OUTPUT = "primaza-system"
+SERVICE_NAMESPACE_FOR_OUTPUT = "services"
+APPLICATION_NAMESPACE_FOR_OUTPUT = "applications"
 
 
 def run_cmd(cmd, silent=False):
@@ -147,7 +151,8 @@ def test_args(command_args):
 
 
 def test_main_install(venv_dir, config, version,
-                      cluster, namespace, kubeconfig=None, expect_out=False):
+                      cluster, namespace, kubeconfig=None,
+                      expect_out=False, dry_run=False, output=False):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -167,6 +172,11 @@ def test_main_install(venv_dir, config, version,
     if kubeconfig:
         command.append("-k")
         command.append(kubeconfig)
+    if dry_run:
+        command.append("-y")
+    if output:
+        command.append("-o")
+        command.append("yaml")
 
     out, err = run_cmd(command)
 
@@ -177,13 +187,14 @@ def test_main_install(venv_dir, config, version,
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False, None
 
-    if "Primaza main installed" not in out:
+    if "Primaza tenant installed" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False, None
 
-    if not check_pods(cluster, namespace):
-        print(f"[{FAIL}] main install pod is not running: {out}")
-        return False, None
+    if not dry_run:
+        if not check_pods(cluster, namespace):
+            print(f"[{FAIL}] main install pod is not running: {out}")
+            return False, None
 
     print(f"[{PASS}] main installed.")
     return True, None
@@ -230,7 +241,8 @@ def check_pods(cluster, namespace):
 
 def test_worker_install(venv_dir, config, version, worker_cluster,
                         main_cluster, tenant, kubeconfig=None,
-                        main_kubeconfig=None, expect_out=False):
+                        main_kubeconfig=None, expect_out=False,
+                        dry_run=False, output=False):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -257,6 +269,11 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
     if main_kubeconfig:
         command.append("-l")
         command.append(main_kubeconfig)
+    if dry_run:
+        command.append("-y")
+    if output:
+        command.append("-o")
+        command.append("yaml")
 
     out, err = run_cmd(command)
 
@@ -267,7 +284,7 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
         print(f"[{FAIL}] Unexpected error response: {err}\n{out}")
         return False, None
 
-    if "Install and configure worker completed" not in out:
+    if "Worker join completed" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False, None
 
@@ -281,7 +298,9 @@ def test_application_namespace_create(venv_dir, namespace,
                                       config, version,
                                       kubeconfig=None,
                                       main_kubeconfig=None,
-                                      expect_out=False):
+                                      expect_out=False,
+                                      dry_run=False,
+                                      output=False):
     if version:
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "application-namespace",
@@ -307,6 +326,11 @@ def test_application_namespace_create(venv_dir, namespace,
     if main_kubeconfig:
         command.append("-l")
         command.append(main_kubeconfig)
+    if dry_run:
+        command.append("-y")
+    if output:
+        command.append("-o")
+        command.append("yaml")
 
     out, err = run_cmd(command)
     if out and expect_out:
@@ -316,7 +340,8 @@ def test_application_namespace_create(venv_dir, namespace,
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False, None
 
-    if "was successfully created" not in out:
+    if f"application namespace {namespace} was successfully created" \
+            not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False, None
 
@@ -334,7 +359,9 @@ def test_service_namespace_create(venv_dir, namespace,
                                   config,
                                   version, kubeconfig=None,
                                   main_kubeconfig=None,
-                                  expect_out=False):
+                                  expect_out=False,
+                                  dry_run=False,
+                                  output=False):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -361,6 +388,11 @@ def test_service_namespace_create(venv_dir, namespace,
     if main_kubeconfig:
         command.append("-l")
         command.append(main_kubeconfig)
+    if dry_run:
+        command.append("-y")
+    if output:
+        command.append("-o")
+        command.append("yaml")
 
     out, err = run_cmd(command)
 
@@ -371,7 +403,8 @@ def test_service_namespace_create(venv_dir, namespace,
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False, None
 
-    if "was successfully created" not in out:
+    if f"service namespace {namespace} was successfully created" \
+            not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False, None
 
@@ -396,6 +429,8 @@ def test_with_user(command_args):
                                          command_args.version,
                                          command_args.main_context,
                                          TENANT, bad_kubeconfig, True)
+
+    print(f"response was:\n {out}")
 
     if expect_out in out:
         print(f"[{PASS}] Output includes expected text: {expect_out}")
@@ -551,6 +586,203 @@ def test_create(command_args):
     return outcome & svc_outcome
 
 
+def test_dry_run(command_args):
+
+    _, worker_resp = test_main_install(command_args.venv_dir,
+                                       command_args.main_config,
+                                       command_args.version,
+                                       command_args.main_context,
+                                       TENANT, None, True, True, False)
+
+    outcome = check_dry_run(command_args.main_config, worker_resp,
+                            "Dry run Primaza tenant install complete")
+    if outcome:
+        print(f"[{PASS}] dry run tenant install test passed")
+    else:
+        print(f"[{FAIL}] dry run tenant install test failed.")
+
+    _, worker_resp = test_worker_install(command_args.venv_dir,
+                                         command_args.worker_config,
+                                         command_args.version,
+                                         command_args.worker_context,
+                                         command_args.main_context,
+                                         TENANT, None, None,
+                                         True, True, False)
+
+    worker_outcome = check_dry_run(command_args.worker_config, worker_resp,
+                                   "Dry run worker join completed")
+    if worker_outcome:
+        print(f"[{PASS}] dry run worker join test passed")
+    else:
+        print(f"[{FAIL}] dry run worker join test failed")
+
+    _, app_resp = test_application_namespace_create(
+        command_args.venv_dir,
+        APPLICATION_NAMESPACE,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.app_config,
+        command_args.version,
+        None, None, True, True, False)
+
+    app_outcome = check_dry_run(command_args.app_config, app_resp,
+                                f"dry run create application namespace "
+                                f"{APPLICATION_NAMESPACE} completed.")
+    if app_outcome:
+        print(f"[{PASS}] dry run application namespace create test passed")
+    else:
+        print(f"[{FAIL}] dry run application namespace create test failed")
+
+    _, service_resp = test_service_namespace_create(
+        command_args.venv_dir,
+        SERVICE_NAMESPACE,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.service_config,
+        command_args.version,
+        None, None, True, True, False)
+
+    service_outcome = check_dry_run(command_args.service_config, service_resp,
+                                    f"dry run create service namespace "
+                                    f"{SERVICE_NAMESPACE} completed.")
+    if service_outcome:
+        print(f"[{PASS}] dry run service namespace create test passed")
+    else:
+        print(f"[{FAIL}] dry run service namespace create test failed")
+
+    return outcome & worker_outcome & app_outcome & service_outcome
+
+
+def check_dry_run(manifest_file, resp, expected_last_message):
+
+    with open(manifest_file, 'r') as manifest:
+        manifest_yaml = yaml.safe_load_all(manifest)
+        manifest_list = list(manifest_yaml)
+
+    expect_lines = len(manifest_list)
+
+    outcome = True
+
+    if not resp:
+        outcome = False
+        print(f"[{FAIL}] no response received for dry-run test")
+    else:
+        num_lines = 0
+        last_line = 0
+        for line in resp.splitlines():
+            num_lines += 1
+            if " (dry run) " not in line:
+                if num_lines > expect_lines and expected_last_message in line:
+                    last_line = num_lines
+                else:
+                    print(f"[{FAIL}] Unexpected line in response: {line} : "
+                          f"Expected each line to contain: (dry run) ")
+                    outcome = False
+
+        if num_lines < expect_lines:
+            print(f"[{FAIL}] response did not contain enough lines: "
+                  f"{resp}")
+            outcome = False
+        elif num_lines > last_line:
+            print(f"[{FAIL}] last line of response was not "
+                  f"{expected_last_message}: {resp}")
+            outcome = False
+
+    return outcome
+
+
+def test_output(command_args):
+
+    _, worker_resp = test_main_install(command_args.venv_dir,
+                                       command_args.main_config,
+                                       command_args.version,
+                                       command_args.main_context,
+                                       TENANT_FOR_OUTPUT,
+                                       None, True, False, True)
+
+    outcome = check_output(command_args.main_config, worker_resp)
+    if outcome:
+        print(f"[{PASS}] output yaml tenant install test passed")
+    else:
+        print(f"[{FAIL}] output yaml tenant install test failed.")
+
+    _, worker_resp = test_worker_install(command_args.venv_dir,
+                                         command_args.worker_config,
+                                         command_args.version,
+                                         command_args.worker_context,
+                                         command_args.main_context,
+                                         TENANT_FOR_OUTPUT,
+                                         None, None, True, False, True)
+
+    worker_outcome = check_output(command_args.worker_config, worker_resp)
+    if worker_outcome:
+        print(f"[{PASS}] output yaml worker join test passed")
+    else:
+        print(f"[{FAIL}] output yaml worker join test failed")
+
+    _, app_resp = test_application_namespace_create(
+        command_args.venv_dir,
+        APPLICATION_NAMESPACE_FOR_OUTPUT,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT_FOR_OUTPUT,
+        command_args.app_config,
+        command_args.version,
+        None, None, True, False, True)
+
+    app_outcome = check_output(command_args.app_config, app_resp)
+    if app_outcome:
+        print(f"[{PASS}] output yaml application namespace create test passed")
+    else:
+        print(f"[{FAIL}] output yaml application namespace create test failed")
+
+    _, service_resp = test_service_namespace_create(
+        command_args.venv_dir,
+        SERVICE_NAMESPACE_FOR_OUTPUT,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT_FOR_OUTPUT,
+        command_args.service_config,
+        command_args.version,
+        None, None, True, False, True)
+
+    service_outcome = check_output(command_args.service_config, service_resp)
+
+    if service_outcome:
+        print(f"[{PASS}] output yaml service namespace create test passed")
+    else:
+        print(f"[{FAIL}] output yaml service namespace create test failed")
+
+    return outcome & worker_outcome & app_outcome & service_outcome
+
+
+def check_output(manifest_file, resp):
+
+    with open(manifest_file, 'r') as manifest:
+        manifest_yaml = yaml.safe_load_all(manifest)
+        manifest_list = list(manifest_yaml)
+
+    outcome = True
+    response_yaml = yaml.safe_load(resp)
+    for manifest_resource in manifest_list:
+        match_found = False
+        for response_resource in response_yaml["items"]:
+            if response_resource["kind"] == manifest_resource["kind"]:
+                if response_resource["metadata"]["name"] == \
+                        manifest_resource["metadata"]["name"]:
+                    match_found = True
+                    break
+        if not match_found:
+            outcome = False
+            print(f'{manifest_resource["kind"]} '
+                  f'{manifest_resource["metadata"]["name"]} '
+                  f'not found in response')
+
+    return outcome
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='runtest',
@@ -590,6 +822,16 @@ def main():
                         required=False,
                         action="count",
                         help="Set to run test with users")
+    parser.add_argument("-d", "--dry-run",
+                        dest="dry_run",
+                        required=False,
+                        action="count",
+                        help="Set to test dry-run")
+    parser.add_argument("-o", "--output-yaml",
+                        dest="output_yaml",
+                        required=False,
+                        action="count",
+                        help="Set to test output yaml")
     parser.add_argument("-i", "--input_dir",
                         dest="input_dir",
                         help="directory for kubeconfigs used for user tests",
@@ -597,7 +839,11 @@ def main():
 
     args = parser.parse_args()
 
-    if args.test_user:
+    if args.dry_run:
+        outcome = test_dry_run(args)
+    elif args.output_yaml:
+        outcome = test_output(args)
+    elif args.test_user:
         outcome = test_with_user(args)
     else:
         outcome = test_args(args)
