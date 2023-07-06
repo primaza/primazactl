@@ -93,19 +93,22 @@ Primazactl help is organized in a hierarchy with contextual help available for d
 
 - Create tenant
   - checks user has the permissions required to run the command.
+    - if not, create tenant is not performed, and a message is output with details of missing permissions.
   - creates a specified namespace, default is `primaza-system`.
     - control-plane `primaza-controller-manager`
     - default image installed: `ghcr.io/primaza/primaza:latest`
   - adds kubernetes resources required by primaza tenant.
 - Join cluster
     - requires tenant to be created first.
-    - checks user has the permissions required to run the command.    
+    - checks user has the permissions required to run the command.
+      - if not, join cluster is not performed, and a message is output with details of missing permissions.
     - add kubernetes resources required to join a cluster.
     - creates an [identity](docs/identities.md#identities) which is shared with the primaza tenant.   
     - creates a cluster-environment resource in primaza tenant to enable communication with the joined cluster.
 - Create application-namespace.
     - requires join cluster to be complete first.
     - checks user has the permissions required to run the command.
+        - if not, create application-namespace is not performed, and a message is output with details of missing permissions.
     - creates a specified namespace, default is `primaza-application`.
     - creates an [identity](docs/identities.md#identities) in the primaza tenant namespace which is shared with the application namespace.
         - enables primaza tenant to access the namespace
@@ -113,7 +116,8 @@ Primazactl help is organized in a hierarchy with contextual help available for d
     - provides join cluster primaza service account with access to the namespace
 - Create service-namespace.
     - requires join cluster to be complete first.
-    make p- checks user has the permissions required to run the command.
+    - checks user has the permissions required to run the command.
+        - if not, create service-namespace is not performed, and a message is output with details of missing permissions.
     - creates a specified namespace, default is `primaza-service`.
     - creates an [identity](docs/identities.md#identities) in the primaza tenant namespace which is shared with the service namespace.
         - enables primaza tenant to access the namespace
@@ -409,7 +413,7 @@ options:
     - run `make setup-test`
     - run `make create-users`  
     - run the test:  `out/venv3/bin/primazatest -u`
-        - src script is `scripts/src/promazatest/runtest.sh`
+        - src script is `scripts/src/primazatest/runtest.sh`
         - requires inputs: python virtual environment directory, the primaza configuration file and the cluster names.
 - To set up the test environment run `make setup-test` 
   - This will run in order:  

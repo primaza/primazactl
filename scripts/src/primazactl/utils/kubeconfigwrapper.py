@@ -106,7 +106,7 @@ class KubeConfigWrapper(object):
 
         kcw = KubeConfigWrapper(self.context, self.kube_config_file)
         kcw.kube_config_content = yaml.dump(cluster_config)
-        logger.log_info(f"Kubeconfig:\n{yaml.dump(cluster_config)}")
+        # logger.log_info(f"Kubeconfig:\n{yaml.dump(cluster_config)}")
         return kcw
 
     def copy_to_temp_file(self, temp_file):

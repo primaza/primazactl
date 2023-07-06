@@ -190,7 +190,6 @@ def apply_manifest(resource_list, client: client,
                 if action == "create" and body["reason"] == "AlreadyExists":
                     logger.log_info('Already Exists: create: '
                                     f'{body["message"]}')
-                    pass
                 elif action == "read" and body["reason"] == "NotFound":
                     logger.log_info(f'read: {body["message"]}')
                 elif action == "delete" and body["reason"] == "NotFound":
