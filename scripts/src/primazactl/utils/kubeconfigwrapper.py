@@ -9,6 +9,7 @@ class KubeConfigWrapper(object):
     kube_config_file: str = None
     kube_config_content = None
     context: str = None
+    user: str = None
 
     def __init__(self, context: str | None, kube_config_file: str):
         self.kube_config_file = kube_config_file
@@ -65,42 +66,61 @@ class KubeConfigWrapper(object):
                           "preferences": kcc_yaml["preferences"],
                           "current-context": self.context}
 
-        logger.log_info("look through clusters")
-        for cluster in kcc_yaml["clusters"]:
-            if cluster["name"] == self.context:
-                logger.log_info(f"cluster found: {self.context}")
-                cluster_config["clusters"] = [cluster]
-                break
-
-        logger.log_info("look through users")
-        for user in kcc_yaml["users"]:
-            if user["name"] == self.context:
-                logger.log_info(f"user found: {self.context}")
-                cluster_config["users"] = [user]
-                break
-
-        logger.log_info("look through contexts")
+        context_cluster: str = None
         for context in kcc_yaml["contexts"]:
             if context["name"] == self.context:
                 cluster_config["contexts"] = [context]
                 logger.log_info(f"context found: {self.context}")
+                self.user = context["context"]["user"]
+                context_cluster = context["context"]["cluster"]
                 break
 
-        kcw = KubeConfigWrapper(self.context, None)
+        if self.user != self.context:
+            for context in kcc_yaml["contexts"]:
+                if context["name"] == self.user:
+                    cluster_config["contexts"].append(context)
+                    logger.log_info(f'context found: {context["name"]}')
+                    break
+
+        for cluster in kcc_yaml["clusters"]:
+            if cluster["name"] == self.context or \
+                    (context_cluster and cluster["name"] == context_cluster):
+                logger.log_info(f'cluster found: {cluster["name"]}')
+                cluster_config["clusters"] = [cluster]
+                break
+
+        if "clusters" not in cluster_config:
+            msg = f"Error cluster {self.context} not found in kube config: " \
+                  f"{self.kube_config_file}"
+            logger.log_error(msg)
+            raise RuntimeError(f"[ERROR] {msg}")
+
+        for user in kcc_yaml["users"]:
+            if user["name"] == self.context or \
+                    (self.user and user["name"] == self.user):
+                logger.log_info(f'user found: {user["name"]}')
+                if "users" in cluster_config:
+                    cluster_config["users"].append(user)
+                else:
+                    cluster_config["users"] = [user]
+
+        kcw = KubeConfigWrapper(self.context, self.kube_config_file)
         kcw.kube_config_content = yaml.dump(cluster_config)
-        # logger.log_info(f"Kubeconfig:\n{kcw.kube_config_content}")
+        # logger.log_info(f"Kubeconfig:\n{yaml.dump(cluster_config)}")
         return kcw
 
     def copy_to_temp_file(self, temp_file):
         logger.log_entry(f"Cluster: {self.context}, "
-                         f"File : {temp_file}")
-        temp_file.write(self.get_kube_config_content().encode("utf-8"))
+                         f"File : {temp_file.name}")
+        temp_file.write(str(self.kube_config_content))
         return KubeConfigWrapper(self.context, temp_file.name)
 
     def get_kube_config_file(self):
         return self.kube_config_file
 
     def get_api_client(self) -> client:
+
+        logger.log_entry(self.context)
         try:
             if self.kube_config_file:
                 self.use_context()

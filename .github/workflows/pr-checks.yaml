@@ -29,3 +29,6 @@ jobs:
 
       - name: run test
         run: make test-local
+
+      - name: run test with users
+        run: make test-users

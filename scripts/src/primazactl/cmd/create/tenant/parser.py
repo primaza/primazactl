@@ -40,7 +40,8 @@ def create_tenant(args):
             args.version).install_primaza()
         print("Primaza main installed")
     except Exception as e:
-        print(traceback.format_exc())
-        print(f"\nAn exception occurred executing main install: {e}",
-              file=sys.stderr)
+        if args.verbose:
+            print(traceback.format_exc())
+            print(f"\nAn exception occurred executing main install: {e}",
+                  file=sys.stderr)
         raise e

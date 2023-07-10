@@ -1,6 +1,8 @@
 import argparse
 import traceback
 import sys
+import os
+from pathlib import Path
 from primazactl.types import kubernetes_name, \
     existing_file, \
     semvertag_or_latest
@@ -10,6 +12,7 @@ from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.version import __primaza_version__
 from .constants import SERVICE, APPLICATION
+from primazactl.utils.kubeconfig import from_env
 
 
 def add_args_namespace(parser: argparse.ArgumentParser, type):
@@ -70,20 +73,40 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         type=semvertag_or_latest,
         default=__primaza_version__)
 
+    parser.add_argument(
+        "-k", "--kubeconfig",
+        dest="kubeconfig",
+        required=False,
+        help=f"path to kubeconfig file, default: KUBECONFIG \
+                   environment variable if set, otherwise \
+                   {(os.path.join(Path.home(),'.kube','config'))}",
+        type=existing_file,
+        default=from_env())
+
+    parser.add_argument(
+        "-l", "--tenant-kubeconfig",
+        dest="tenant_kubeconfig",
+        required=False,
+        help=f"path to kubeconfig file for the tenant, default: KUBECONFIG \
+                   environment variable if set, otherwise \
+                   {(os.path.join(Path.home(),'.kube','config'))}",
+        type=existing_file,
+        default=from_env())
+
 
 def __create_namespace(args, type):
     try:
 
         main = MainCluster(context=args.tenant_context,
                            namespace=args.tenant,
-                           kubeconfig_path=None,
+                           kubeconfig_path=args.tenant_kubeconfig,
                            config_file=None,
                            version=None,)
 
         worker = WorkerCluster(
             primaza_main=main,
             context=args.context,
-            kubeconfig_file=None,
+            kubeconfig_file=args.kubeconfig,
             config_file=None,
             version=None,
             environment=None,
@@ -99,6 +122,7 @@ def __create_namespace(args, type):
                                     args.namespace,
                                     args.cluster_environment,
                                     args.context,
+                                    args.kubeconfig,
                                     args.config,
                                     args.version,
                                     main,

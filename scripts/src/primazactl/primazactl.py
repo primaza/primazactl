@@ -23,8 +23,9 @@ def main():
 
     except (argparse.ArgumentError, ValidationError) as err:
         p.error(err)
-    except Exception as err:
-        sys.stderr.write("error: %s\n" % err)
+    except Exception:
+        # arparse will output an error
+        pass
 
     sys.exit(1)
 

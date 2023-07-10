@@ -2,9 +2,12 @@ import argparse
 import subprocess
 import sys
 import time
+import os
 
 PASS = '\033[92mPASS\033[0m'
+SUCCESS = '\033[92mSUCCESS\033[0m'
 FAIL = '\033[91mFAIL\033[0m'
+FAILED = '\033[91mFAILED\033[0m'
 
 TENANT = "primaza-controller-system"
 SERVICE_NAMESPACE = "service-agent-system"
@@ -62,8 +65,12 @@ def run_and_check(venv_dir, args, expect_msg, expect_error_msg, fail_msg):
                 print(f"\n---[{FAIL}] args: {args} : {fail_msg}\n")
                 outcome = False
         else:
-            print(f"\n---[{FAIL}] args: {args} : {fail_msg}")
-            outcome = False
+            print(f"Response was:\n{ctl_out}\n")
+            if ctl_out and expect_error_msg in ctl_out:
+                print(f"\n+++[{PASS}] args: {args}\n")
+            else:
+                print(f"\n---[{FAIL}] args: {args} : {fail_msg}")
+                outcome = False
 
     return outcome
 
@@ -130,8 +137,8 @@ def test_args(command_args):
                 "--config",
                 command_args.main_config]
 
-    expect_error_msg = "Exception getting kubernetes client for cluster " \
-                       "non-existent-cluster"
+    expect_error_msg = "Error cluster non-existent-cluster not " \
+                       "found in kube config"
     fail_msg = "unexpected response to bad cluster"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
@@ -139,7 +146,8 @@ def test_args(command_args):
     return outcome
 
 
-def test_main_install(venv_dir, config, version, cluster, namespace):
+def test_main_install(venv_dir, config, version,
+                      cluster, namespace, kubeconfig=None, expect_out=False):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -156,22 +164,29 @@ def test_main_install(venv_dir, config, version, cluster, namespace):
                    "-c", cluster,
                    "-f", config]
 
+    if kubeconfig:
+        command.append("-k")
+        command.append(kubeconfig)
+
     out, err = run_cmd(command)
+
+    if out and expect_out:
+        return True, out
 
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}")
-        return False
+        return False, None
 
     if "Primaza main installed" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
-        return False
+        return False, None
 
     if not check_pods(cluster, namespace):
         print(f"[{FAIL}] main install pod is not running: {out}")
-        return False
+        return False, None
 
     print(f"[{PASS}] main installed.")
-    return True
+    return True, None
 
 
 def check_pods(cluster, namespace):
@@ -214,7 +229,8 @@ def check_pods(cluster, namespace):
 
 
 def test_worker_install(venv_dir, config, version, worker_cluster,
-                        main_cluster, tenant):
+                        main_cluster, tenant, kubeconfig=None,
+                        main_kubeconfig=None, expect_out=False):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -235,23 +251,37 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
                    "-t", tenant,
                    "-f", config]
 
+    if kubeconfig:
+        command.append("-k")
+        command.append(kubeconfig)
+    if main_kubeconfig:
+        command.append("-l")
+        command.append(main_kubeconfig)
+
     out, err = run_cmd(command)
+
+    if out and expect_out:
+        return True, out
+
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}\n{out}")
-        return False
+        return False, None
 
     if "Install and configure worker completed" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
-        return False
+        return False, None
 
     print(f"[{PASS}] Worker joined\n\n{out}")
-    return True
+    return True, None
 
 
 def test_application_namespace_create(venv_dir, namespace,
                                       worker_cluster,
                                       main_cluster, tenant,
-                                      config, version):
+                                      config, version,
+                                      kubeconfig=None,
+                                      main_kubeconfig=None,
+                                      expect_out=False):
     if version:
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "application-namespace",
@@ -271,29 +301,40 @@ def test_application_namespace_create(venv_dir, namespace,
                    "-t", tenant,
                    "-f", config]
 
-    print("command: ", command)
+    if kubeconfig:
+        command.append("-k")
+        command.append(kubeconfig)
+    if main_kubeconfig:
+        command.append("-l")
+        command.append(main_kubeconfig)
+
     out, err = run_cmd(command)
+    if out and expect_out:
+        return True, out
+
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}")
-        return False
+        return False, None
 
     if "was successfully created" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
-        return False
+        return False, None
 
     if not check_pods(worker_cluster, namespace):
         print(f"[{FAIL}] application namespace pod is not running!\n\n{out}")
-        return False
+        return False, None
 
     print(f"[{PASS}] Application namespace created\n\n{out}")
-    return True
+    return True, None
 
 
 def test_service_namespace_create(venv_dir, namespace,
                                   worker_cluster,
                                   main_cluster, tenant,
                                   config,
-                                  version):
+                                  version, kubeconfig=None,
+                                  main_kubeconfig=None,
+                                  expect_out=False):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -314,22 +355,200 @@ def test_service_namespace_create(venv_dir, namespace,
                    "-t", tenant,
                    "-f", config]
 
-    print("command: ", command)
+    if kubeconfig:
+        command.append("-k")
+        command.append(kubeconfig)
+    if main_kubeconfig:
+        command.append("-l")
+        command.append(main_kubeconfig)
+
     out, err = run_cmd(command)
+
+    if out and expect_out:
+        return True, out
+
     if err:
         print(f"[{FAIL}] Unexpected error response: {err}")
-        return False
+        return False, None
 
     if "was successfully created" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
-        return False
+        return False, None
 
     if not check_pods(worker_cluster, namespace):
         print(f"[{FAIL}] service namespace pod is not running!\n\n{out}")
-        return False
+        return False, None
 
     print(f"[{PASS}] Service namespace created\n\n{out}")
-    return True
+    return True, None
+
+
+def test_with_user(command_args):
+
+    configs_dir = command_args.input_dir
+    if not configs_dir:
+        configs_dir = "out/users"
+
+    bad_kubeconfig = os.path.join(configs_dir, "tenant-bad-kube.config")
+    expect_out = "User does not have permissions to create RegisteredService"
+    bad_outcome, out = test_main_install(command_args.venv_dir,
+                                         command_args.main_config,
+                                         command_args.version,
+                                         command_args.main_context,
+                                         TENANT, bad_kubeconfig, True)
+
+    if expect_out in out:
+        print(f"[{PASS}] Output includes expected text: {expect_out}")
+    else:
+        print(f"[{FAIL}] Unexpected response: {out}. "
+              f"Expected to contain {expect_out}")
+        bad_outcome = False
+
+    main_kubeconfig = os.path.join(configs_dir, "tenant-kube.config")
+    good_outcome, _ = test_main_install(command_args.venv_dir,
+                                        command_args.main_config,
+                                        command_args.version,
+                                        command_args.main_context,
+                                        TENANT, main_kubeconfig, False)
+
+    outcome = bad_outcome & good_outcome
+
+    bad_kubeconfig = os.path.join(configs_dir, "worker-bad-kube.config")
+    expect_out = "User does not have permissions to create ServiceBinding"
+    bad_outcome, out = test_worker_install(command_args.venv_dir,
+                                           command_args.worker_config,
+                                           command_args.version,
+                                           command_args.worker_context,
+                                           command_args.main_context,
+                                           TENANT, bad_kubeconfig,
+                                           main_kubeconfig, True)
+    if expect_out in out:
+        print(f"[{PASS}] Output includes expected text: {expect_out}")
+    else:
+        print(f"[{FAIL}] Unexpected response: {out}. "
+              f"Expected to contain {expect_out}")
+        bad_outcome = False
+
+    worker_kubeconfig = os.path.join(configs_dir, "worker-kube.config")
+    good_outcome, _ = test_worker_install(command_args.venv_dir,
+                                          command_args.worker_config,
+                                          command_args.version,
+                                          command_args.worker_context,
+                                          command_args.main_context,
+                                          TENANT, worker_kubeconfig,
+                                          main_kubeconfig, False)
+    outcome = outcome & bad_outcome & good_outcome
+
+    bad_kubeconfig = os.path.join(configs_dir,
+                                  "application-agent-bad-kube.config")
+    expect_out = "is attempting to grant RBAC permissions not currently held"
+    bad_outcome, out = test_application_namespace_create(
+        command_args.venv_dir,
+        APPLICATION_NAMESPACE,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.app_config,
+        command_args.version,
+        bad_kubeconfig,
+        main_kubeconfig,
+        True)
+
+    if expect_out in out:
+        print(f"[{PASS}] Output includes expected text: {expect_out}")
+    else:
+        print(f"[{FAIL}] Unexpected response: {out}. "
+              f"Expected to contain {expect_out}")
+        bad_outcome = False
+
+    app_kubeconfig = os.path.join(configs_dir,
+                                  "application-agent-kube.config")
+    good_outcome, _ = test_application_namespace_create(
+        command_args.venv_dir,
+        APPLICATION_NAMESPACE,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.app_config,
+        command_args.version,
+        app_kubeconfig,
+        main_kubeconfig, False)
+    outcome = outcome & bad_outcome & good_outcome
+
+    bad_kubeconfig = os.path.join(configs_dir,
+                                  "service-agent-bad-kube.config")
+    expect_out = "is attempting to grant RBAC permissions not currently held"
+    bad_outcome, out = test_service_namespace_create(
+        command_args.venv_dir,
+        SERVICE_NAMESPACE,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.app_config,
+        command_args.version,
+        bad_kubeconfig,
+        main_kubeconfig,
+        True)
+
+    if expect_out in out:
+        print(f"[{PASS}] Output includes expected text: {expect_out}")
+    else:
+        print(f"[{FAIL}] Unexpected response: {out}. "
+              f"Expected to contain {expect_out}")
+        bad_outcome = False
+
+    svc_kubeconfig = os.path.join(configs_dir, "service-agent-kube.config")
+    good_outcome, _ = test_service_namespace_create(
+        command_args.venv_dir,
+        SERVICE_NAMESPACE,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.app_config,
+        command_args.version,
+        svc_kubeconfig,
+        main_kubeconfig,
+        True)
+
+    outcome = outcome & bad_outcome & good_outcome
+
+    return outcome
+
+
+def test_create(command_args):
+
+    outcome, _ = test_main_install(command_args.venv_dir,
+                                   command_args.main_config,
+                                   command_args.version,
+                                   command_args.main_context,
+                                   TENANT)
+    worker_outcome, _ = test_worker_install(command_args.venv_dir,
+                                            command_args.worker_config,
+                                            command_args.version,
+                                            command_args.worker_context,
+                                            command_args.main_context,
+                                            TENANT)
+    outcome = outcome & worker_outcome
+    app_outcome, _ = test_application_namespace_create(
+        command_args.venv_dir,
+        APPLICATION_NAMESPACE,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.app_config,
+        command_args.version)
+    outcome = outcome & app_outcome
+
+    svc_outcome, _ = test_service_namespace_create(
+        command_args.venv_dir,
+        SERVICE_NAMESPACE,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.service_config,
+        command_args.version)
+
+    return outcome & svc_outcome
 
 
 def main():
@@ -366,42 +585,28 @@ def main():
     parser.add_argument("-v", "--version",
                         dest="version", type=str, required=False,
                         help="primaza version to use.")
+    parser.add_argument("-u", "--test-user",
+                        dest="test_user",
+                        required=False,
+                        action="count",
+                        help="Set to run test with users")
+    parser.add_argument("-i", "--input_dir",
+                        dest="input_dir",
+                        help="directory for kubeconfigs used for user tests",
+                        required=False)
 
     args = parser.parse_args()
 
-    outcome = test_args(args)
-    outcome = outcome & test_main_install(args.venv_dir,
-                                          args.main_config,
-                                          args.version,
-                                          args.main_context,
-                                          TENANT)
-    outcome = outcome & test_worker_install(args.venv_dir,
-                                            args.worker_config,
-                                            args.version,
-                                            args.worker_context,
-                                            args.main_context,
-                                            TENANT)
-    outcome = outcome & test_application_namespace_create(
-        args.venv_dir,
-        APPLICATION_NAMESPACE,
-        args.worker_context,
-        args.main_context,
-        TENANT,
-        args.app_config,
-        args.version)
-    outcome = outcome & test_service_namespace_create(
-        args.venv_dir,
-        SERVICE_NAMESPACE,
-        args.worker_context,
-        args.main_context,
-        TENANT,
-        args.service_config,
-        args.version)
+    if args.test_user:
+        outcome = test_with_user(args)
+    else:
+        outcome = test_args(args)
+        outcome = outcome & test_create(args)
 
     if outcome:
-        print("[SUCCESS] All tests passed")
+        print(f"[{SUCCESS}] All tests passed")
     else:
-        print("[FAILED] One or more tests failed")
+        print(f"[{FAILED}] One or more tests failed")
         sys.exit(1)
 
 
