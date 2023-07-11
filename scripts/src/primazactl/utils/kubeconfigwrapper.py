@@ -10,6 +10,7 @@ class KubeConfigWrapper(object):
     kube_config_content = None
     context: str = None
     user: str = None
+    cluster: str = None
 
     def __init__(self, context: str | None, kube_config_file: str):
         self.kube_config_file = kube_config_file
@@ -18,6 +19,7 @@ class KubeConfigWrapper(object):
             logger.log_info(f"kcw: Use context cluster: {self.context}")
         else:
             self.context = context
+            self.cluster = context
         logger.log_info(f"kcw: cluster: {self.context}, "
                         f"file: {self.kube_config_file}")
 
@@ -66,13 +68,12 @@ class KubeConfigWrapper(object):
                           "preferences": kcc_yaml["preferences"],
                           "current-context": self.context}
 
-        context_cluster: str = None
         for context in kcc_yaml["contexts"]:
             if context["name"] == self.context:
                 cluster_config["contexts"] = [context]
                 logger.log_info(f"context found: {self.context}")
                 self.user = context["context"]["user"]
-                context_cluster = context["context"]["cluster"]
+                self.cluster = context["context"]["cluster"]
                 break
 
         if self.user != self.context:
@@ -83,8 +84,7 @@ class KubeConfigWrapper(object):
                     break
 
         for cluster in kcc_yaml["clusters"]:
-            if cluster["name"] == self.context or \
-                    (context_cluster and cluster["name"] == context_cluster):
+            if cluster["name"] == self.cluster:
                 logger.log_info(f'cluster found: {cluster["name"]}')
                 cluster_config["clusters"] = [cluster]
                 break

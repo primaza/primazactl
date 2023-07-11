@@ -46,7 +46,8 @@ class PrimazaCluster(object):
 
     def get_updated_server_url(self):
         logger.log_entry()
-        cluster = f'{self.context.replace("kind-","")}'
+        cluster = self.kubeconfig.cluster
+        cluster = f'{cluster.replace("kind-","")}'
         control_plane = f'{cluster}-control-plane'
         out, err = Command().run(f"docker inspect {control_plane}")
         if err != 0:
@@ -104,6 +105,7 @@ class PrimazaCluster(object):
                         self.namespace, kubeconfig, tenant)
 
         if cluster_environment is not None:
+
             owner = self.read_clusterenvironment(tenant, cluster_environment)
             secret.owners = [client.V1OwnerReference(
                 api_version=owner["apiVersion"],
