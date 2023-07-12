@@ -152,7 +152,7 @@ def test_args(command_args):
 
 def test_main_install(venv_dir, config, version,
                       cluster, namespace, kubeconfig=None,
-                      expect_out=False, dry_run=False, output=False):
+                      expect_out=False, dry_run=None, output=None):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -174,9 +174,10 @@ def test_main_install(venv_dir, config, version,
         command.append(kubeconfig)
     if dry_run:
         command.append("-y")
+        command.append(dry_run)
     if output:
         command.append("-o")
-        command.append("yaml")
+        command.append(output)
 
     out, err = run_cmd(command)
 
@@ -242,7 +243,7 @@ def check_pods(cluster, namespace):
 def test_worker_install(venv_dir, config, version, worker_cluster,
                         main_cluster, tenant, kubeconfig=None,
                         main_kubeconfig=None, expect_out=False,
-                        dry_run=False, output=False):
+                        dry_run=None, output=None):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -271,9 +272,10 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
         command.append(main_kubeconfig)
     if dry_run:
         command.append("-y")
+        command.append(dry_run)
     if output:
         command.append("-o")
-        command.append("yaml")
+        command.append(output)
 
     out, err = run_cmd(command)
 
@@ -299,8 +301,8 @@ def test_application_namespace_create(venv_dir, namespace,
                                       kubeconfig=None,
                                       main_kubeconfig=None,
                                       expect_out=False,
-                                      dry_run=False,
-                                      output=False):
+                                      dry_run=None,
+                                      output=None):
     if version:
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "application-namespace",
@@ -328,9 +330,10 @@ def test_application_namespace_create(venv_dir, namespace,
         command.append(main_kubeconfig)
     if dry_run:
         command.append("-y")
+        command.append(dry_run)
     if output:
         command.append("-o")
-        command.append("yaml")
+        command.append(output)
 
     out, err = run_cmd(command)
     if out and expect_out:
@@ -360,8 +363,8 @@ def test_service_namespace_create(venv_dir, namespace,
                                   version, kubeconfig=None,
                                   main_kubeconfig=None,
                                   expect_out=False,
-                                  dry_run=False,
-                                  output=False):
+                                  dry_run=None,
+                                  output=None):
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -390,9 +393,10 @@ def test_service_namespace_create(venv_dir, namespace,
         command.append(main_kubeconfig)
     if dry_run:
         command.append("-y")
+        command.append(dry_run)
     if output:
         command.append("-o")
-        command.append("yaml")
+        command.append(output)
 
     out, err = run_cmd(command)
 
@@ -586,20 +590,22 @@ def test_create(command_args):
     return outcome & svc_outcome
 
 
-def test_dry_run(command_args):
+def test_dry_run(command_args, dry_run_type):
 
     _, worker_resp = test_main_install(command_args.venv_dir,
                                        command_args.main_config,
                                        command_args.version,
                                        command_args.main_context,
-                                       TENANT, None, True, True, False)
+                                       TENANT, None, True, dry_run_type, None)
 
-    outcome = check_dry_run(command_args.main_config, worker_resp,
+    outcome = check_dry_run(dry_run_type,
+                            command_args.main_config,
+                            worker_resp,
                             "Dry run Primaza tenant install complete")
     if outcome:
-        print(f"[{PASS}] dry run tenant install test passed")
+        print(f"[{PASS}] {dry_run_type} dry run tenant install test passed")
     else:
-        print(f"[{FAIL}] dry run tenant install test failed.")
+        print(f"[{FAIL}] {dry_run_type} dry run tenant install test failed.")
 
     _, worker_resp = test_worker_install(command_args.venv_dir,
                                          command_args.worker_config,
@@ -607,14 +613,16 @@ def test_dry_run(command_args):
                                          command_args.worker_context,
                                          command_args.main_context,
                                          TENANT, None, None,
-                                         True, True, False)
+                                         True, dry_run_type, None)
 
-    worker_outcome = check_dry_run(command_args.worker_config, worker_resp,
+    worker_outcome = check_dry_run(dry_run_type,
+                                   command_args.worker_config,
+                                   worker_resp,
                                    "Dry run worker join completed")
     if worker_outcome:
-        print(f"[{PASS}] dry run worker join test passed")
+        print(f"[{PASS}] {dry_run_type} dry run worker join test passed")
     else:
-        print(f"[{FAIL}] dry run worker join test failed")
+        print(f"[{FAIL}] {dry_run_type} dry run worker join test failed")
 
     _, app_resp = test_application_namespace_create(
         command_args.venv_dir,
@@ -624,15 +632,19 @@ def test_dry_run(command_args):
         TENANT,
         command_args.app_config,
         command_args.version,
-        None, None, True, True, False)
+        None, None, True, dry_run_type, None)
 
-    app_outcome = check_dry_run(command_args.app_config, app_resp,
+    app_outcome = check_dry_run(dry_run_type,
+                                command_args.app_config,
+                                app_resp,
                                 f"dry run create application namespace "
                                 f"{APPLICATION_NAMESPACE} completed.")
     if app_outcome:
-        print(f"[{PASS}] dry run application namespace create test passed")
+        print(f"[{PASS}] {dry_run_type} dry run application namespace "
+              f"create test passed")
     else:
-        print(f"[{FAIL}] dry run application namespace create test failed")
+        print(f"[{FAIL}] {dry_run_type} dry run application namespace "
+              f"create test failed")
 
     _, service_resp = test_service_namespace_create(
         command_args.venv_dir,
@@ -642,26 +654,30 @@ def test_dry_run(command_args):
         TENANT,
         command_args.service_config,
         command_args.version,
-        None, None, True, True, False)
+        None, None, True, dry_run_type, None)
 
-    service_outcome = check_dry_run(command_args.service_config, service_resp,
+    service_outcome = check_dry_run(dry_run_type,
+                                    command_args.service_config,
+                                    service_resp,
                                     f"dry run create service namespace "
                                     f"{SERVICE_NAMESPACE} completed.")
     if service_outcome:
-        print(f"[{PASS}] dry run service namespace create test passed")
+        print(f"[{PASS}] {dry_run_type} dry run service namespace "
+              f"create test passed")
     else:
-        print(f"[{FAIL}] dry run service namespace create test failed")
+        print(f"[{FAIL}] {dry_run_type} dry run service namespace "
+              f"create test failed")
 
     return outcome & worker_outcome & app_outcome & service_outcome
 
 
-def check_dry_run(manifest_file, resp, expected_last_message):
+def check_dry_run(dry_run_type, manifest_file, resp, expected_last_message):
 
     with open(manifest_file, 'r') as manifest:
         manifest_yaml = yaml.safe_load_all(manifest)
         manifest_list = list(manifest_yaml)
 
-    expect_lines = len(manifest_list)
+    expect_lines = 0 if dry_run_type == "client" else len(manifest_list)
 
     outcome = True
 
@@ -693,20 +709,22 @@ def check_dry_run(manifest_file, resp, expected_last_message):
     return outcome
 
 
-def test_output(command_args):
+def test_output(command_args, dry_run_type=None):
 
     _, worker_resp = test_main_install(command_args.venv_dir,
                                        command_args.main_config,
                                        command_args.version,
                                        command_args.main_context,
                                        TENANT_FOR_OUTPUT,
-                                       None, True, False, True)
+                                       None, True, dry_run_type, "yaml")
 
     outcome = check_output(command_args.main_config, worker_resp)
     if outcome:
-        print(f"[{PASS}] output yaml tenant install test passed")
+        print(f"[{PASS}] output yaml tenant install test passed. "
+              f"dry-run={dry_run_type}")
     else:
-        print(f"[{FAIL}] output yaml tenant install test failed.")
+        print(f"[{FAIL}] output yaml tenant install test failed. "
+              f"dry-run={dry_run_type}")
 
     _, worker_resp = test_worker_install(command_args.venv_dir,
                                          command_args.worker_config,
@@ -714,13 +732,16 @@ def test_output(command_args):
                                          command_args.worker_context,
                                          command_args.main_context,
                                          TENANT_FOR_OUTPUT,
-                                         None, None, True, False, True)
+                                         None, None, True,
+                                         dry_run_type, "yaml")
 
     worker_outcome = check_output(command_args.worker_config, worker_resp)
     if worker_outcome:
-        print(f"[{PASS}] output yaml worker join test passed")
+        print(f"[{PASS}] output yaml worker join test passed. ",
+              f"dry-run={dry_run_type}")
     else:
-        print(f"[{FAIL}] output yaml worker join test failed")
+        print(f"[{FAIL}] output yaml worker join test failed. "
+              f"dry-run={dry_run_type}")
 
     _, app_resp = test_application_namespace_create(
         command_args.venv_dir,
@@ -730,13 +751,15 @@ def test_output(command_args):
         TENANT_FOR_OUTPUT,
         command_args.app_config,
         command_args.version,
-        None, None, True, False, True)
+        None, None, True, dry_run_type, "yaml")
 
     app_outcome = check_output(command_args.app_config, app_resp)
     if app_outcome:
-        print(f"[{PASS}] output yaml application namespace create test passed")
+        print(f"[{PASS}] output yaml application namespace create test "
+              f"passed. dry-run={dry_run_type}")
     else:
-        print(f"[{FAIL}] output yaml application namespace create test failed")
+        print(f"[{FAIL}] output yaml application namespace create test "
+              f"failed. dry-run={dry_run_type}")
 
     _, service_resp = test_service_namespace_create(
         command_args.venv_dir,
@@ -746,14 +769,16 @@ def test_output(command_args):
         TENANT_FOR_OUTPUT,
         command_args.service_config,
         command_args.version,
-        None, None, True, False, True)
+        None, None, True, dry_run_type, "yaml")
 
     service_outcome = check_output(command_args.service_config, service_resp)
 
     if service_outcome:
-        print(f"[{PASS}] output yaml service namespace create test passed")
+        print(f"[{PASS}] output yaml service namespace create test "
+              f"passed. dry-run={dry_run_type}")
     else:
-        print(f"[{FAIL}] output yaml service namespace create test failed")
+        print(f"[{FAIL}] output yaml service namespace create test "
+              f"failed. dry-run={dry_run_type}")
 
     return outcome & worker_outcome & app_outcome & service_outcome
 
@@ -840,9 +865,11 @@ def main():
     args = parser.parse_args()
 
     if args.dry_run:
-        outcome = test_dry_run(args)
+        outcome = test_dry_run(args, "client")
+        outcome = outcome & test_dry_run(args, "server")
     elif args.output_yaml:
-        outcome = test_output(args)
+        outcome = test_output(args, "client")
+        outcome = outcome & test_output(args)
     elif args.test_user:
         outcome = test_with_user(args)
     else:

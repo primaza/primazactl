@@ -66,7 +66,7 @@ class ClusterEnvironment(CustomNamespaced):
         self.patch(self.body)
 
     def check(self, state, ctype, cstatus):
-        if not settings.dry_run:
+        if not settings.dry_run_active():
             self.check_state(state)
             self.check_status_condition(ctype, cstatus)
             self.check_status_condition(

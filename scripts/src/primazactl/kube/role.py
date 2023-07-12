@@ -24,9 +24,11 @@ class Role(object):
     def create(self):
         logger.log_entry(f"User: {self.name}")
         settings.add_resource(self.role.to_dict())
+        if settings.dry_run == settings.DRY_RUN_CLIENT:
+            return
         if not self.read():
             try:
-                if settings.dry_run:
+                if settings.dry_run == settings.DRY_RUN_SERVER:
                     self.rbac.create_namespaced_role(self.namespace,
                                                      self.role,
                                                      dry_run="All")
@@ -35,18 +37,18 @@ class Role(object):
                                                      self.role)
                 logger.log_info('SUCCESS: create of Role '
                                 f'{self.role.metadata.name}',
-                                settings.dry_run)
+                                settings.dry_run_active())
             except ApiException as e:
                 body = yaml.safe_load(e.body)
                 logger.log_error('FAILED: create of Role '
                                  f'{self.role.metadata.name} '
                                  f'Exception: {body["message"]}')
-                if not settings.dry_run:
+                if not settings.dry_run_active():
                     raise e
         else:
             logger.log_info('UNCHANGED: Role '
                             f'{self.role.metadata.name} already exists',
-                            settings.dry_run)
+                            settings.dry_run_active())
 
     def read(self) -> client.V1ClusterRole | None:
         logger.log_entry(f"User: {self.name}")

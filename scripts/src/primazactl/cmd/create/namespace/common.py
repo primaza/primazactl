@@ -134,9 +134,9 @@ def __create_namespace(args, type):
 
         namespace.check()
 
-        if settings.output_yaml:
+        if settings.output_active():
             settings.output()
-        elif settings.dry_run:
+        elif settings.dry_run_active():
             print(f"dry run create {type} namespace "
                   f"{args.namespace} completed.")
         else:

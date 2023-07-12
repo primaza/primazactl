@@ -85,8 +85,8 @@ class Manifest(object):
             for error in errors:
                 msg += f"\n{error}"
 
-            logger.log_error(msg, not settings.dry_run)
-            if not settings.dry_run:
+            logger.log_error(msg, not settings.dry_run_active())
+            if not settings.dry_run_active():
                 raise RuntimeError(msg)
 
     def build_github_client(self) -> Github:

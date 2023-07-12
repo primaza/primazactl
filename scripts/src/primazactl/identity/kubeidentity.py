@@ -83,7 +83,7 @@ class KubeIdentity(object):
         logger.log_entry(f"sa_name: {self.sa_name} "
                          f"namespace: {self.namespace}")
 
-        if settings.dry_run:
+        if settings.dry_run_active():
             return {"token": "000000"}
 
         corev1 = client.CoreV1Api(self.api_client)
@@ -112,6 +112,7 @@ class KubeIdentity(object):
                                          self.sa_name,
                                          self.namespace)
         service_account.create()
+
         sa = service_account.read()
 
         owner_uid = sa.metadata.uid \

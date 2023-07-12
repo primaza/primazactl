@@ -41,9 +41,9 @@ def create_tenant(args):
             args.config,
             args.version).install_primaza()
 
-        if settings.output_yaml:
+        if settings.output_active():
             settings.output()
-        elif settings.dry_run:
+        elif settings.dry_run_active():
             print("Dry run Primaza tenant install complete")
         else:
             print("Primaza tenant installed")

@@ -49,7 +49,7 @@ class Secret(object):
                     "namespace": self.tenant,
                 })
 
-        if settings.output_yaml:
+        if settings.dry_run_active():
             print_secret = copy.deepcopy(secret)
             print_secret.string_data = {
                 "kubeconfig": "xxxxx-hidden",
@@ -58,10 +58,11 @@ class Secret(object):
             settings.add_resource(print_secret.to_dict())
             settings.add_warning(f'Secret {self.name}: \"kubeconfig\" '
                                  'attribute modified to hide secrets')
-
+        if settings.dry_run == settings.DRY_RUN_CLIENT:
+            return
         if not self.read():
             try:
-                if settings.dry_run:
+                if settings.dry_run == settings.DRY_RUN_SERVER:
                     self.corev1.create_namespaced_secret(
                         namespace=self.namespace,
                         body=secret, dry_run="All")
@@ -71,18 +72,18 @@ class Secret(object):
                         body=secret)
                 logger.log_info('SUCCESS: create of Secret '
                                 f'{secret.metadata.name}',
-                                settings.dry_run)
+                                settings.dry_run_active())
             except ApiException as e:
                 body = yaml.safe_load(e.body)
                 logger.log_error('FAILED: create of Secret '
                                  f'{secret.metadata.name} '
                                  f'Exception: {body["message"]}')
-                if not settings.dry_run:
+                if not settings.dry_run_active():
                     raise e
         else:
             logger.log_info('UNCHANGED: create of secret '
                             f'{secret.metadata.name} already exists',
-                            settings.dry_run)
+                            settings.dry_run_active())
 
     def read(self) -> client.V1Secret | None:
         logger.log_entry(f"Secret name: {self.name}, "

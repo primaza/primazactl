@@ -139,9 +139,9 @@ def join_cluster(args):
             tenant=args.tenant,
         ).install_worker()
 
-        if settings.output_yaml:
+        if settings.output_active():
             settings.output()
-        elif settings.dry_run:
+        elif settings.dry_run_active():
             print("Dry run worker join completed")
         else:
             print("Worker join completed")

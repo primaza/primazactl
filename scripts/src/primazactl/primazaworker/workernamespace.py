@@ -111,7 +111,7 @@ class WorkerNamespace(PrimazaCluster):
                                       sa_name)
         primaza_binding.create()
 
-        if not settings.dry_run:
+        if not settings.dry_run_active():
             ce = self.main.get_cluster_environment(self.cluster_environment)
             ce.add_namespace(self.type, self.namespace)
             logger.log_info(f"ce:{ce.body}")
@@ -121,7 +121,7 @@ class WorkerNamespace(PrimazaCluster):
                          f"Namespace {self.namespace}")
 
         error_messages = []
-        if settings.dry_run:
+        if settings.dry_run_active():
             return error_messages
 
         if self.type == APPLICATION:

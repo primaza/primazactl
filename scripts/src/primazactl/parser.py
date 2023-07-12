@@ -4,6 +4,7 @@ from primazactl.cmd.create.parser import add_group as create_add_group
 from primazactl.cmd.delete.parser import add_group as delete_add_group
 from primazactl.cmd.join.parser import add_group as join_add_group
 from primazactl.version import __version__
+from primazactl.utils import settings
 
 
 class PrimazactlParser(argparse.ArgumentParser):
@@ -33,16 +34,20 @@ def build_parser() -> argparse.ArgumentParser:
     base_subparser.add_argument(
         "-y", "--dry-run",
         dest="dry_run",
-        required=False,
-        action="count",
-        help="Set for dry run")
-    base_subparser.add_argument(
-        "-o", "--output",
-        dest="output_yaml",
         type=str,
         required=False,
-        choices=["yaml"],
-        help="Set to get output of resources which are created")
+        choices=settings.DRY_RUN_CHOICES,
+        default=settings.DRY_RUN_NONE,
+        help=f"Set for dry run (default: {settings.DRY_RUN_NONE})")
+    base_subparser.add_argument(
+        "-o", "--output",
+        dest="output_type",
+        type=str,
+        required=False,
+        choices=settings.OUTPUT_CHOICES,
+        default=settings.OUTPUT_NONE,
+        help="Set to get output of resources which are created "
+             f"(default: {settings.OUTPUT_NONE}).")
 
     subparsers = parser.add_subparsers()
     create_add_group(subparsers, parents=[base_subparser])

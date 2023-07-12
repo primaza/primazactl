@@ -128,7 +128,7 @@ Primazactl help is organized in a hierarchy with contextual help available for d
 
 ### Create tenant help
 ```
-usage: primazactl create tenant [-h] [-x] [-y] [-o {yaml}] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] [tenant]
+usage: primazactl create tenant [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] [tenant]
 
 positional arguments:
   tenant                tenant to create. Default: primaza-system
@@ -136,9 +136,10 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
-  -y, --dry-run         Set for dry run
-  -o {yaml}, --output {yaml}
-                        Set to get output of resources which are created
+  -y {client,server,none}, --dry-run {client,server,none}
+                        Set for dry run (default: none)
+  -o {yaml,none}, --output {yaml,none}
+                        Set to get output of resources which are created (default: none).
   -f CONFIG, --config CONFIG
                         primaza config file. Takes precedence over --version
   -v VERSION, --version VERSION
@@ -176,10 +177,17 @@ options:
  - `--output yaml`
     - Outputs the manifests of the resources that are created.
     - The content will be as used for creating the resource.
- - `--dry-run`
-    - Resources will be created with dry-run and will not be persisted.
-    - Output provides the outcome for each resource created. 
-
+    - Use with `--dry-run client` to get output without creating resources.
+    - Default is `none` - no output is produced.
+ - `--dry-run {server,client,none}`
+    - If set to `server` 
+        - Resources will be created with dry-run and will not be persisted.
+        - Output provides the outcome for each resource created.
+    - If set to `client`
+        - No output produced.
+        - Use in conjunction with `--output--` to get output without creating resources.
+    - Default: none - resources are persisted.
+    
 ## Delete tenant command
 
 ### Delete tenant help
@@ -214,15 +222,16 @@ Notes:
 
 ### Join cluster help
 ```
-usage: primazactl join cluster [-h] [-x] [-y] [-o {yaml}] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] -d CLUSTER_ENVIRONMENT -e ENVIRONMENT
-                               [-l TENANT_KUBECONFIG] [-m TENANT_CONTEXT] [-t TENANT]
+usage: primazactl join cluster [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] -d
+                               CLUSTER_ENVIRONMENT -e ENVIRONMENT [-l TENANT_KUBECONFIG] [-m TENANT_CONTEXT] [-t TENANT]
 
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
-  -y, --dry-run         Set for dry run
-  -o {yaml}, --output {yaml}
-                        Set to get output of resources which are created
+  -y {client,server,none}, --dry-run {client,server,none}
+                        Set for dry run (default: none)
+  -o {yaml,none}, --output {yaml,none}
+                        Set to get output of resources which are created (default: none).
   -f CONFIG, --config CONFIG
                         primaza config file. Takes precedence over --version
   -v VERSION, --version VERSION
@@ -280,13 +289,19 @@ options:
 - `--tenant tenant`
     - Tenant used for the join.
     - Default is `primaza-system`.
--  `--output yaml`
+- `--output yaml`
     - Outputs the manifests of the resources that are created.
     - The content will be as used for creating the resource.
-- `--dry-run`
-    - Resources will be created with dry-run and will not be persisted.
-    - Output provides the outcome for each resource created.
-
+    - Use with `--dry-run client` to get output without creating resources.
+    - Default is `none` - no output is produced.
+- `--dry-run {server,client,none}`
+    - If set to `server`
+        - Resources will be created with dry-run and will not be persisted.
+        - Output provides the outcome for each resource created.
+    - If set to `client`
+        - No output produced.
+        - Use in conjunction with `--output--` to get output without creating resources.
+    - Default: none - resources are persisted.
     
 
 ## Create application namespace command
@@ -296,8 +311,8 @@ Notes:
 
 ### Create application-namespace help
 ```
-usage: primazactl create application-namespace [-h] [-x] [-y] [-o {yaml}] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT]
-                                               [-v VERSION] [-k KUBECONFIG] [-l TENANT_KUBECONFIG]
+usage: primazactl create application-namespace [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] -d CLUSTER_ENVIRONMENT [-c CONTEXT]
+                                               [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT] [-v VERSION] [-k KUBECONFIG] [-l TENANT_KUBECONFIG]
                                                namespace
 
 positional arguments:
@@ -306,9 +321,10 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
-  -y, --dry-run         Set for dry run
-  -o {yaml}, --output {yaml}
-                        Set to get output of resources which are created
+  -y {client,server,none}, --dry-run {client,server,none}
+                        Set for dry run (default: none)
+  -o {yaml,none}, --output {yaml,none}
+                        Set to get output of resources which are created (default: none).
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -c CONTEXT, --context CONTEXT
@@ -362,12 +378,19 @@ options:
     - path to kubeconfig file for the tenant 
     - default: KUBECONFIG environment variable if set, otherwise
       /<home directory>/.kube/config
--  `--output yaml`
+- `--output yaml`
     - Outputs the manifests of the resources that are created.
     - The content will be as used for creating the resource.
-- `--dry-run`
-    - Resources will be created with dry-run and will not be persisted.
-    - Output provides the outcome for each resource created.
+    - Use with `--dry-run client` to get output without creating resources.
+    - Default is `none` - no output is produced.
+- `--dry-run {server,client,none}`
+    - If set to `server`
+        - Resources will be created with dry-run and will not be persisted.
+        - Output provides the outcome for each resource created.
+    - If set to `client`
+        - No output produced.
+        - Use in conjunction with `--output--` to get output without creating resources.
+    - Default: none - resources are persisted.
 
     
 
@@ -379,8 +402,8 @@ Notes:
     
 ### Create service-namespace help:
 ```
-usage: primazactl create service-namespace [-h] [-x] [-y] [-o {yaml}] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT]
-                                           [-v VERSION] [-k KUBECONFIG] [-l TENANT_KUBECONFIG]
+usage: primazactl create service-namespace [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT]
+                                           [-f CONFIG] [-t TENANT] [-v VERSION] [-k KUBECONFIG] [-l TENANT_KUBECONFIG]
                                            namespace
 
 positional arguments:
@@ -389,9 +412,14 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -x, --verbose         Set for verbose output
-  -y, --dry-run         Set for dry run
-  -o {yaml}, --output {yaml}
-                        Set to get output of resources which are created
+  -y {client,server,none}, --dry-run {client,server,none}
+                        Set for dry run (default: none)
+  -o {yaml,none}, --output {yaml,none}
+                        Set to get output of resources which are created (default: none).
+
+
+
+
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -c CONTEXT, --context CONTEXT
@@ -442,12 +470,19 @@ options:
 - `--tenant-kubeconfig TENANT_KUBECONFIG`
   path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
   /<home directory>/.kube/config
--  `--output yaml`
+- `--output yaml`
     - Outputs the manifests of the resources that are created.
     - The content will be as used for creating the resource.
-- `--dry-run`
-    - Resources will be created with dry-run and will not be persisted.
-    - Output provides the outcome for each resource created.
+    - Use with `--dry-run client` to get output without creating resources.
+    - Default is `none` - no output is produced.
+- `--dry-run {server,client,none}`
+    - If set to `server`
+        - Resources will be created with dry-run and will not be persisted.
+        - Output provides the outcome for each resource created.
+    - If set to `client`
+        - No output produced.
+        - Use in conjunction with `--output--` to get output without creating resources.
+    - Default: none - resources are persisted.
 
     
 # Testing

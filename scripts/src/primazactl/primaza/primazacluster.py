@@ -106,7 +106,7 @@ class PrimazaCluster(object):
                         self.namespace, kubeconfig, tenant)
 
         if cluster_environment is not None:
-            if settings.dry_run:
+            if settings.dry_run_active():
                 secret.owners = [client.V1OwnerReference(
                     api_version="primaza.io/v1alpha",
                     kind="cluster_environment",
@@ -130,7 +130,7 @@ class PrimazaCluster(object):
     def check_service_account_roles(self, service_account_name,
                                     role_name, role_namespace):
         logger.log_entry(self.namespace)
-        if settings.dry_run:
+        if settings.dry_run_active():
             return []
 
         api_client = self.kubeconfig.get_api_client()
