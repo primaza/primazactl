@@ -66,6 +66,15 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         default=DEFAULT_TENANT)
 
     parser.add_argument(
+        "-u", "--tenant-internal-url",
+        dest="tenant_internal_url",
+        type=str,
+        required=False,
+        help="Internal URL for the cluster \
+                on which Primaza's Control Plane is running",
+        default=None)
+
+    parser.add_argument(
         "-v", "--version",
         dest="version",
         required=False,
@@ -102,7 +111,9 @@ def __create_namespace(args, type):
                            namespace=args.tenant,
                            kubeconfig_path=args.tenant_kubeconfig,
                            config_file=None,
-                           version=None,)
+                           version=None,
+                           internal_url=args.tenant_internal_url,
+                           )
 
         worker = WorkerCluster(
             primaza_main=main,
@@ -117,7 +128,7 @@ def __create_namespace(args, type):
 
         main_user = main.create_primaza_identity(
             args.cluster_environment)
-        kcfg = main.get_kubeconfig(main_user, args.context)
+        kcfg = main.get_kubeconfig(main_user)
 
         namespace = WorkerNamespace(type,
                                     args.namespace,
