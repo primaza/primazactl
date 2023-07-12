@@ -10,6 +10,7 @@ from primazactl.primazaworker.workercluster import WorkerCluster
 from primazactl.utils.kubeconfig import from_env
 from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.version import __primaza_version__
+from primazactl.utils import settings
 
 
 def add_group(parser: argparse.ArgumentParser, parents=[]):
@@ -118,6 +119,7 @@ def add_args_join(parser: argparse.ArgumentParser):
 def join_cluster(args):
 
     try:
+        settings.set(args)
         main = MainCluster(
             context=args.tenant_context,
             namespace=args.tenant,
@@ -137,7 +139,12 @@ def join_cluster(args):
             tenant=args.tenant,
         ).install_worker()
 
-        print("Install and configure worker completed")
+        if settings.output_active():
+            settings.output()
+        elif settings.dry_run_active():
+            print("Dry run worker join completed")
+        else:
+            print("Worker join completed")
     except Exception as e:
         print(traceback.format_exc())
         print(f"\nAn exception occurred executing the "

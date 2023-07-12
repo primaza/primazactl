@@ -13,6 +13,7 @@ from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.version import __primaza_version__
 from .constants import SERVICE, APPLICATION
 from primazactl.utils.kubeconfig import from_env
+from primazactl.utils import settings
 
 
 def add_args_namespace(parser: argparse.ArgumentParser, type):
@@ -96,7 +97,7 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
 
 def __create_namespace(args, type):
     try:
-
+        settings.set(args)
         main = MainCluster(context=args.tenant_context,
                            namespace=args.tenant,
                            kubeconfig_path=args.tenant_kubeconfig,
@@ -132,7 +133,15 @@ def __create_namespace(args, type):
         worker.create_namespaced_kubeconfig_secret(kcfg, args.tenant)
 
         namespace.check()
-        print(f"{type} namespace primaza-{type} was successfully created")
+
+        if settings.output_active():
+            settings.output()
+        elif settings.dry_run_active():
+            print(f"dry run create {type} namespace "
+                  f"{args.namespace} completed.")
+        else:
+            print(f"{type} namespace {args.namespace} "
+                  f"was successfully created")
 
     except Exception as e:
         print(traceback.format_exc())

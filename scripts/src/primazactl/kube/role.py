@@ -1,6 +1,8 @@
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from primazactl.utils import logger
+from primazactl.utils import settings
+import yaml
 
 
 class Role(object):
@@ -21,17 +23,32 @@ class Role(object):
 
     def create(self):
         logger.log_entry(f"User: {self.name}")
-
+        settings.add_resource(self.role.to_dict())
+        if settings.dry_run == settings.DRY_RUN_CLIENT:
+            return
         if not self.read():
             try:
-                self.rbac.create_namespaced_role(self.namespace,
-                                                 self.role)
+                if settings.dry_run == settings.DRY_RUN_SERVER:
+                    self.rbac.create_namespaced_role(self.namespace,
+                                                     self.role,
+                                                     dry_run="All")
+                else:
+                    self.rbac.create_namespaced_role(self.namespace,
+                                                     self.role)
+                logger.log_info('SUCCESS: create of Role '
+                                f'{self.role.metadata.name}',
+                                settings.dry_run_active())
             except ApiException as e:
-                logger.log_error("Exception when calling "
-                                 "create_cluster_role: %s\n" % e)
-                raise e
+                body = yaml.safe_load(e.body)
+                logger.log_error('FAILED: create of Role '
+                                 f'{self.role.metadata.name} '
+                                 f'Exception: {body["message"]}')
+                if not settings.dry_run_active():
+                    raise e
         else:
-            logger.log_info(self.read())
+            logger.log_info('UNCHANGED: Role '
+                            f'{self.role.metadata.name} already exists',
+                            settings.dry_run_active())
 
     def read(self) -> client.V1ClusterRole | None:
         logger.log_entry(f"User: {self.name}")

@@ -3,6 +3,7 @@ import yaml
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from primazactl.utils import logger
+from primazactl.utils import settings
 
 
 def get_method(kind, action="create", namespaced=False):
@@ -51,12 +52,19 @@ def apply_resource(resource: {}, api_client: client, action: str = "create"):
     namespace = resource["metadata"]["namespace"] \
         if "namespace" in resource["metadata"] else ""
 
+    settings.add_resource(resource)
+    if settings.dry_run == settings.DRY_RUN_CLIENT:
+        return None, None
+
     kwargs = {}
     if namespace:
         kwargs['namespace'] = namespace
         namespaced = True
     else:
         namespaced = False
+
+    if settings.dry_run == settings.DRY_RUN_SERVER:
+        kwargs['dry_run'] = "All"
 
     resource_client = get_kube_client(resource["apiVersion"], api_client)
 
@@ -172,31 +180,39 @@ def __check_self_access(resource, action, auth_client):
 def apply_manifest(resource_list, client: client,
                    action: str = "create") -> []:
 
-    errors = check_self(resource_list, client, action)
+    errors = [] if settings.dry_run == settings.DRY_RUN_CLIENT \
+        else check_self(resource_list, client, action)
     if len(errors) == 0:
         for resource in resource_list:
+            resource_action = f'{action} of {resource["kind"]} ' \
+                              f'{resource["metadata"]["name"]}'
             try:
-                _, error = apply_resource(resource, client, action)
+                resp, error = apply_resource(resource, client, action)
                 if error:
-                    logger.log_error(f"FAILED: {action} of {resource} "
-                                     f"failed: {error}")
+                    logger.log_error(f'FAILED: {resource_action} '
+                                     f'failed: {error}',
+                                     not settings.dry_run_active())
                     errors.append(error)
-                else:
-                    logger.log_info(f'SUCCESS: {action} of '
-                                    f'{resource["metadata"]["name"]} '
-                                    'was successful')
+                elif resp:
+                    msg = f'SUCCESS: {resource_action} was successful'
+                    logger.log_info(msg, settings.dry_run_active())
             except ApiException as api_exception:
                 body = yaml.safe_load(api_exception.body)
                 if action == "create" and body["reason"] == "AlreadyExists":
-                    logger.log_info('Already Exists: create: '
-                                    f'{body["message"]}')
+                    logger.log_info(f'ALREADY EXISTS: {resource_action} '
+                                    f'{body["message"]}',
+                                    settings.dry_run_active())
                 elif action == "read" and body["reason"] == "NotFound":
-                    logger.log_info(f'read: {body["message"]}')
+                    logger.log_info(f'{resource_action}: {body["message"]}',
+                                    settings.dry_run_active())
                 elif action == "delete" and body["reason"] == "NotFound":
-                    logger.log_info(f'delete: {body["message"]}')
+                    logger.log_info(f'{resource_action}: {body["message"]}',
+                                    settings.dry_run_active())
                 else:
-                    logger.log_error('FAILED with Exception: '
-                                     f'{action}: {body}')
-                    errors.append('FAILED with Exception: '
-                                  f'{action}: {body["message"]}')
+                    msg = f'FAILED: {resource_action}: ' \
+                          f'Exception: {body["message"]}'
+
+                    logger.log_error(msg)
+                    errors.append(f'{settings.get_dry_run()}{msg}')
+
     return errors

@@ -1,6 +1,8 @@
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from primazactl.utils import logger
+from primazactl.utils import settings
+import yaml
 
 
 class ServiceAccount(object):
@@ -9,6 +11,7 @@ class ServiceAccount(object):
     namespace: str = None
     corev1: client.CoreV1Api = None
     authv1: client.AuthorizationV1Api = None
+    sa: client.V1ServiceAccount = None
 
     def __init__(self,  api_client: client,
                  idendtity: str,
@@ -22,31 +25,54 @@ class ServiceAccount(object):
         logger.log_entry(f"Identity: {self.identity}, "
                          f"namespace: {self.namespace}")
 
+        new_sa = client.V1ServiceAccount(
+            api_version="v1",
+            kind="ServiceAccount",
+            metadata=client.V1ObjectMeta(
+                name=self.identity,
+                namespace=self.namespace,
+                labels={
+                    "app.kubernetes.io/component": "rbac",
+                    "app.kubernetes.io/created-by": "primaza",
+                    "app.kubernetes.io/instance": self.identity,
+                    "app.kubernetes.io/managed-by": "primazactl",
+                    "app.kubernetes.io/name": "serviceaccount",
+                    "app.kubernetes.io/part-of": "primaza"})
+        )
+        settings.add_resource(new_sa.to_dict())
+        if settings.dry_run == settings.DRY_RUN_CLIENT:
+            self.sa = new_sa
+            return
         if not self.read():
-            sa = client.V1ServiceAccount(
-                metadata=client.V1ObjectMeta(
-                    name=self.identity,
-                    namespace=self.namespace,
-                    labels={
-                        "app.kubernetes.io/component": "rbac",
-                        "app.kubernetes.io/created-by": "primaza",
-                        "app.kubernetes.io/instance": self.identity,
-                        "app.kubernetes.io/managed-by": "primazactl",
-                        "app.kubernetes.io/name": "serviceaccount",
-                        "app.kubernetes.io/part-of": "primaza"})
-                    )
+            self.sa = new_sa
             try:
-                self.corev1.create_namespaced_service_account(
-                    self.namespace, sa)
+                if settings.dry_run == settings.DRY_RUN_SERVER:
+                    self.corev1.create_namespaced_service_account(
+                        self.namespace, self.sa, dry_run="All")
+                else:
+                    self.corev1.create_namespaced_service_account(
+                        self.namespace, self.sa)
+                logger.log_info('SUCCESS: create of ServiceAccount '
+                                f'{self.sa.metadata.name}',
+                                settings.dry_run_active())
             except ApiException as e:
-                logger.log_error("Exception when calling "
-                                 "create_namespaced_service_account: %s\n" % e)
-                raise e
+                body = yaml.safe_load(e.body)
+                logger.log_error('FAILED: create of ServiceAccount '
+                                 f'{self.sa.metadata.name} '
+                                 f'Exception: {body["message"]}')
+                if not settings.dry_run_active():
+                    raise e
+        else:
+            logger.log_info('UNCHANGED: ServiceAccount '
+                            f'{new_sa.metadata.name} already exists',
+                            settings.dry_run_active())
 
     def read(self) -> client.V1ServiceAccount | None:
         logger.log_entry(f"Identity: {self.identity}, "
                          f"namespace: {self.namespace}")
 
+        if settings.dry_run_active():
+            return self.sa
         try:
             return self.corev1.read_namespaced_service_account(
                 name=self.identity,
