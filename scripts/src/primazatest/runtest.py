@@ -4,6 +4,7 @@ import sys
 import time
 import os
 import yaml
+from primazactl.utils.command import Command
 
 PASS = '\033[92mPASS\033[0m'
 SUCCESS = '\033[92mSUCCESS\033[0m'
@@ -240,10 +241,26 @@ def check_pods(cluster, namespace):
     return outcome
 
 
+def get_cluster_internal_url(cluster_name: str) -> str:
+    control_plane = f'{cluster_name}-control-plane'
+    out, err = Command().run(f"docker inspect {control_plane}")
+    if err != 0:
+        raise RuntimeError("\n[ERROR] error getting data from docker:"
+                           f"{control_plane} : {err}")
+    docker_data = yaml.safe_load(out)
+    networks = docker_data[0]["NetworkSettings"]["Networks"]
+    ipaddr = networks["kind"]["IPAddress"]
+    internal_url = f"https://{ipaddr}:6443"
+    return internal_url
+
+
 def test_worker_install(venv_dir, config, version, worker_cluster,
                         main_cluster, tenant, kubeconfig=None,
                         main_kubeconfig=None, expect_out=False,
                         dry_run=None, output=None):
+
+    internal_url = get_cluster_internal_url(
+            worker_cluster.replace("kind-", ""))
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
@@ -253,7 +270,8 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
-                   "-v", version]
+                   "-v", version,
+                   "-u", internal_url]
     else:
         command = [f"{venv_dir}/bin/primazactl",
                    "join", "cluster",
@@ -262,7 +280,8 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
-                   "-f", config]
+                   "-f", config,
+                   "-u", internal_url]
 
     if kubeconfig:
         command.append("-k")
@@ -303,6 +322,9 @@ def test_application_namespace_create(venv_dir, namespace,
                                       expect_out=False,
                                       dry_run=None,
                                       output=None):
+
+    internal_url = get_cluster_internal_url(main_cluster.replace("kind-", ""))
+
     if version:
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "application-namespace",
@@ -311,7 +333,8 @@ def test_application_namespace_create(venv_dir, namespace,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
-                   "-v", version]
+                   "-v", version,
+                   "-u", internal_url]
     else:
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "application-namespace",
@@ -320,7 +343,8 @@ def test_application_namespace_create(venv_dir, namespace,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
-                   "-f", config]
+                   "-f", config,
+                   "-u", internal_url]
 
     if kubeconfig:
         command.append("-k")
@@ -366,6 +390,8 @@ def test_service_namespace_create(venv_dir, namespace,
                                   dry_run=None,
                                   output=None):
 
+    internal_url = get_cluster_internal_url(main_cluster.replace("kind-", ""))
+
     if version:
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "service-namespace",
@@ -374,7 +400,8 @@ def test_service_namespace_create(venv_dir, namespace,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
-                   "-v", version]
+                   "-v", version,
+                   "-u", internal_url]
     else:
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "service-namespace",
@@ -383,7 +410,8 @@ def test_service_namespace_create(venv_dir, namespace,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
-                   "-f", config]
+                   "-f", config,
+                   "-u", internal_url]
 
     if kubeconfig:
         command.append("-k")

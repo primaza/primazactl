@@ -28,6 +28,7 @@ class WorkerCluster(PrimazaCluster):
             environment: str,
             cluster_environment: str,
             tenant: str,
+            internal_url: str | None = None,
             ):
 
         sa_name, _ = names.get_identity_names(tenant, cluster_environment)
@@ -38,7 +39,8 @@ class WorkerCluster(PrimazaCluster):
                          kubeconfig_file,
                          config_file,
                          cluster_environment,
-                         tenant)
+                         tenant,
+                         internal_url)
 
         self.primaza_main = primaza_main
         self.environment = environment
@@ -75,8 +77,7 @@ class WorkerCluster(PrimazaCluster):
         identity = self.create_identity(sa_name, key_name)
 
         logger.log_info("Create cluster context secret in main")
-        cc_kubeconfig = self.get_kubeconfig(identity,
-                                            self.primaza_main.context)
+        cc_kubeconfig = self.get_kubeconfig(identity)
 
         logger.log_info("Create cluster environment in main")
         secret_name = names.get_kube_secret_name(self.cluster_environment)

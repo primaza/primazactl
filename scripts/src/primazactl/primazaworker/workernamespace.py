@@ -47,7 +47,8 @@ class WorkerNamespace(PrimazaCluster):
                          kubeconfig_file,
                          role_config,
                          cluster_environment,
-                         worker.tenant)
+                         worker.tenant,
+                         None)
 
         self.main = main
         self.worker = worker
@@ -78,7 +79,7 @@ class WorkerNamespace(PrimazaCluster):
             self.namespace)
 
         # Get kubeconfig with secret from service accounf
-        kc = self.main.get_kubeconfig(main_identity, self.context)
+        kc = self.main.get_kubeconfig(main_identity)
 
         # - in the created namespace, create the Secret
         #     'primaza-auth-$CLUSTER_ENVIRONMENT' the Worker key

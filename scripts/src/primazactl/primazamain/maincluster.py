@@ -21,7 +21,8 @@ class MainCluster(PrimazaCluster):
             namespace: str | None,
             kubeconfig_path: str | None,
             config_file: str | None,
-            version: str | None):
+            version: str | None,
+            internal_url: str | None = None):
 
         self.kube_config_file = kubeconfig_path
 
@@ -36,7 +37,8 @@ class MainCluster(PrimazaCluster):
                          kubeconfig_path,
                          config_file,
                          None,
-                         namespace)
+                         namespace,
+                         internal_url)
 
         self.primaza_version = version
 

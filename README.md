@@ -123,7 +123,7 @@ Primazactl help is organized in a hierarchy with contextual help available for d
         - enables primaza tenant to access the namespace
     - creates two service accounts for the service-namespace to access kubernetes resources based on two different roles.
     - provides join cluster service account with access to the namespace
-    
+
 ## Create tenant command
 
 ### Create tenant help
@@ -187,7 +187,7 @@ options:
         - No output produced.
         - Use in conjunction with `--output--` to get output without creating resources.
     - Default: none - resources are persisted.
-    
+
 ## Delete tenant command
 
 ### Delete tenant help
@@ -222,8 +222,8 @@ Notes:
 
 ### Join cluster help
 ```
-usage: primazactl join cluster [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] -d
-                               CLUSTER_ENVIRONMENT -e ENVIRONMENT [-l TENANT_KUBECONFIG] [-m TENANT_CONTEXT] [-t TENANT]
+usage: primazactl join cluster [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] [-f CONFIG] [-v VERSION] [-c CONTEXT] [-k KUBECONFIG] [-u INTERNAL_URL] -d CLUSTER_ENVIRONMENT -e ENVIRONMENT [-l TENANT_KUBECONFIG] [-m TENANT_CONTEXT]
+                               [-t TENANT]
 
 options:
   -h, --help            show this help message and exit
@@ -240,13 +240,14 @@ options:
                         name of cluster, as it appears in kubeconfig, to join, default: current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
                         path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
+  -u INTERNAL_URL, --internal-url INTERNAL_URL
+                        the url used by Primaza's Control Plane to reach the joined cluster
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -e ENVIRONMENT, --environment ENVIRONMENT
                         the Environment that will be associated to the ClusterEnvironment
   -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
-                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
-                        /<home directory>/.kube/config
+                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
   -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which primaza tenant was created. Default: current kubeconfig context
   -t TENANT, --tenant TENANT
@@ -267,6 +268,8 @@ options:
             - Set the environment variable `KIND_CLUSTER_JOIN_NAME` before running make to overwrite the name of the cluster created.
     - If using kind, prepend `kind-` to the cluster name.
     - Can use the same cluster as used for main install.
+- `-internal-url INTERNAL_URL`
+    - the url that will be used by the Control Plane to reach the joined cluster
 - `--kubeconfig KUBECONFIG`
     - The kubeconfig file is not modified by primazactl.
     - The cluster specified for worker join does not have to be the current context.
@@ -302,7 +305,7 @@ options:
         - No output produced.
         - Use in conjunction with `--output--` to get output without creating resources.
     - Default: none - resources are persisted.
-    
+
 
 ## Create application namespace command
 
@@ -311,8 +314,8 @@ Notes:
 
 ### Create application-namespace help
 ```
-usage: primazactl create application-namespace [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] -d CLUSTER_ENVIRONMENT [-c CONTEXT]
-                                               [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT] [-v VERSION] [-k KUBECONFIG] [-l TENANT_KUBECONFIG]
+usage: primazactl create application-namespace [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT] [-u TENANT_INTERNAL_URL] [-v VERSION] [-k KUBECONFIG]
+                                               [-l TENANT_KUBECONFIG]
                                                namespace
 
 positional arguments:
@@ -328,21 +331,21 @@ options:
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -c CONTEXT, --context CONTEXT
-                        name of cluster, as it appears in kubeconfig, on which to create the service or application namespace, default: current
-                        kubeconfig context
+                        name of cluster, as it appears in kubeconfig, on which to create the service or application namespace, default: current kubeconfig context
   -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which Primaza tenant was created. Default: current kubeconfig context
   -f CONFIG, --config CONFIG
                         Config file containing agent roles
   -t TENANT, --tenant TENANT
                         tenant to use. Default: primaza-system
+  -u TENANT_INTERNAL_URL, --tenant-internal-url TENANT_INTERNAL_URL
+                        Internal URL for the cluster on which Primaza's Control Plane is running
   -v VERSION, --version VERSION
                         Version of primaza to use, default: latest. Ignored if --config is set.
   -k KUBECONFIG, --kubeconfig KUBECONFIG
                         path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
   -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
-                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
-                        /<home directory>/.kube/config                      
+                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
 ```
 
 ### Create application-namespace options: 
@@ -362,8 +365,10 @@ options:
         - Run `make config` from the repository
         - The config will be created: `out/config/application_agent_config_latest.yaml`
 - `--tenant TENANT`
-     - tenant to use.
-     - Default is `primaza-system`.
+    - tenant to use.
+    - Default is `primaza-system`.
+- `--tenant-internal-url TENANT_INTERNAL_URL`
+    - The URL the Application Agent will use to contact the cluster on which Primaza's Control Plane is running
 - `--version VERSION`
     - Specify the version of manifests to use.
         - see: [releases](https://github.com/primaza/primazactl/releases) for available versions.
@@ -392,18 +397,17 @@ options:
         - Use in conjunction with `--output--` to get output without creating resources.
     - Default: none - resources are persisted.
 
-    
 
 ## Create service namespace command
 
 Notes:
 - requires join cluster to be completed.
 
-    
+
 ### Create service-namespace help:
 ```
-usage: primazactl create service-namespace [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT]
-                                           [-f CONFIG] [-t TENANT] [-v VERSION] [-k KUBECONFIG] [-l TENANT_KUBECONFIG]
+usage: primazactl create service-namespace [-h] [-x] [-y {client,server,none}] [-o {yaml,none}] -d CLUSTER_ENVIRONMENT [-c CONTEXT] [-m TENANT_CONTEXT] [-f CONFIG] [-t TENANT] [-u TENANT_INTERNAL_URL] [-v VERSION] [-k KUBECONFIG]
+                                           [-l TENANT_KUBECONFIG]
                                            namespace
 
 positional arguments:
@@ -416,28 +420,24 @@ options:
                         Set for dry run (default: none)
   -o {yaml,none}, --output {yaml,none}
                         Set to get output of resources which are created (default: none).
-
-
-
-
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
                         name to use for the ClusterEnvironment that will be created in Primaza
   -c CONTEXT, --context CONTEXT
-                        name of cluster, as it appears in kubeconfig, on which to create the service or application namespace, default: current
-                        kubeconfig context
+                        name of cluster, as it appears in kubeconfig, on which to create the service or application namespace, default: current kubeconfig context
   -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which Primaza tenant was created. Default: current kubeconfig context
   -f CONFIG, --config CONFIG
                         Config file containing agent roles
   -t TENANT, --tenant TENANT
                         tenant to use. Default: primaza-system
+  -u TENANT_INTERNAL_URL, --tenant-internal-url TENANT_INTERNAL_URL
+                        Internal URL for the cluster on which Primaza's Control Plane is running
   -v VERSION, --version VERSION
                         Version of primaza to use, default: latest. Ignored if --config is set.
   -k KUBECONFIG, --kubeconfig KUBECONFIG
                         path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
   -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
-                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
-                        /<home directory>/.kube/config                                                                                              
+                        path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise /<home directory>/.kube/config
 ```
 
 ### Create service-namespace options: 
@@ -467,6 +467,11 @@ options:
 - `--kubeconfig KUBECONFIG`
     - The kubeconfig file is not modified by primazactl.
     - The cluster specified for worker join does not have to be the current context.
+- `--tenant TENANT`
+    - tenant to use.
+    - Default is `primaza-system`.
+- `--tenant-internal-url TENANT_INTERNAL_URL`
+    - The URL the Application Agent will use to contact the cluster on which Primaza's Control Plane is running
 - `--tenant-kubeconfig TENANT_KUBECONFIG`
   path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
   /<home directory>/.kube/config

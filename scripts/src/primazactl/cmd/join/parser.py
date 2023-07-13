@@ -69,6 +69,15 @@ def add_args_join(parser: argparse.ArgumentParser):
         type=existing_file,
         default=from_env())
 
+    parser.add_argument(
+        "-u", "--internal-url",
+        dest="internal_url",
+        required=False,
+        help="the url used by Primaza's Control Plane to \
+                   reach the joined cluster",
+        type=str,
+        default=None)
+
     # main
     parser.add_argument(
         "-d", "--cluster-environment",
@@ -137,6 +146,7 @@ def join_cluster(args):
             environment=args.environment,
             cluster_environment=args.cluster_environment,
             tenant=args.tenant,
+            internal_url=args.internal_url,
         ).install_worker()
 
         if settings.output_active():
