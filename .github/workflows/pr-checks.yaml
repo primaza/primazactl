@@ -39,3 +39,7 @@ jobs:
       - name: run test with output
         run: make test-output
 
+      - name: run test with options file
+        run: make test-options
+
+

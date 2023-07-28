@@ -5,8 +5,10 @@ from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.identity.kubeidentity import KubeIdentity
 from .clusterenvironment import ClusterEnvironment
 from primazactl.utils import names
+from primazactl.utils import settings
 from primazactl.kubectl.manifest import Manifest
 from primazactl.kubectl.constants import PRIMAZA_CONFIG
+from primazactl.kube.pod import Pod
 
 
 class MainCluster(PrimazaCluster):
@@ -95,3 +97,15 @@ class MainCluster(PrimazaCluster):
 
     def uninstall_primaza(self):
         self.uninstall_config(self.manifest)
+
+    def check(self):
+
+        if settings.dry_run_active():
+            return None
+
+        pod = Pod(self.kubeconfig.get_api_client(), self.namespace)
+        pod_name = pod.get_primaza_pod_name()
+        logger.log_info(f"Pod name {pod_name}")
+        if pod_name:
+            return pod.wait_for_running()
+        return "Tenant pod not found."

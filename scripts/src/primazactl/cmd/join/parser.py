@@ -5,12 +5,11 @@ import sys
 from pathlib import Path
 from primazactl.types import \
     existing_file, kubernetes_name, semvertag_or_latest
-from primazactl.primazamain.maincluster import MainCluster
-from primazactl.primazaworker.workercluster import WorkerCluster
-from primazactl.utils.kubeconfig import from_env
 from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.version import __primaza_version__
 from primazactl.utils import settings
+from primazactl.cmd.options.options import Options
+from primazactl.utils import logger
 
 
 def add_group(parser: argparse.ArgumentParser, parents=[]):
@@ -46,7 +45,15 @@ def add_args_join(parser: argparse.ArgumentParser):
         help=f"Version of primaza to use, default: {__primaza_version__}. "
              "Ignored if --config is set.",
         type=semvertag_or_latest,
-        default=__primaza_version__)
+        default=None)
+
+    parser.add_argument("-p", "--options",
+                        dest="options_file",
+                        type=existing_file,
+                        required=False,
+                        help="primaza options file in which default "
+                             "command line options are specified. Options "
+                             "set on the command line take precedence.")
 
     # worker
     parser.add_argument(
@@ -67,7 +74,7 @@ def add_args_join(parser: argparse.ArgumentParser):
                    environment variable if set, otherwise \
                    {(os.path.join(Path.home(),'.kube','config'))}",
         type=existing_file,
-        default=from_env())
+        default=None)
 
     parser.add_argument(
         "-u", "--internal-url",
@@ -91,7 +98,7 @@ def add_args_join(parser: argparse.ArgumentParser):
         "-e", "--environment",
         dest="environment",
         type=kubernetes_name,
-        required=True,
+        required=False,
         help="the Environment that will be associated to \
                 the ClusterEnvironment")
 
@@ -103,7 +110,7 @@ def add_args_join(parser: argparse.ArgumentParser):
                    environment variable if set, otherwise \
                    {(os.path.join(Path.home(),'.kube','config'))}",
         type=existing_file,
-        default=from_env())
+        default=None)
 
     parser.add_argument(
         "-m", "--tenant-context",
@@ -122,41 +129,77 @@ def add_args_join(parser: argparse.ArgumentParser):
         required=False,
         help=f"tenant to use for join. Default: \
             {DEFAULT_TENANT}",
-        default=DEFAULT_TENANT)
+        default=None)
+
+    # options
+    parser.add_argument(
+        "-y", "--dry-run",
+        dest="dry_run",
+        type=str,
+        required=False,
+        choices=settings.DRY_RUN_CHOICES,
+        default=settings.DRY_RUN_NONE,
+        help=f"Set for dry run (default: {settings.DRY_RUN_NONE})")
+
+    parser.add_argument(
+        "-o", "--output",
+        dest="output_type",
+        type=str,
+        required=False,
+        choices=settings.OUTPUT_CHOICES,
+        default=settings.OUTPUT_NONE,
+        help="Set to get output of resources which are created "
+             f"(default: {settings.OUTPUT_NONE}).")
 
 
 def join_cluster(args):
 
     try:
+
+        if not args.options_file:
+            if not args.environment and args.cluster_environment:
+                print("[ERROR] must specify either an options file or both "
+                      "a cluster environment and an environment")
+                return
+
         settings.set(args)
-        main = MainCluster(
-            context=args.tenant_context,
-            namespace=args.tenant,
-            kubeconfig_path=args.tenant_kubeconfig,
-            config_file=None,
-            version=None,
-        )
 
-        WorkerCluster(
-            primaza_main=main,
-            context=args.context,
-            kubeconfig_file=args.kubeconfig,
-            config_file=args.config,
-            version=args.version,
-            environment=args.environment,
-            cluster_environment=args.cluster_environment,
-            tenant=args.tenant,
-            internal_url=args.internal_url,
-        ).install_worker()
+        options = Options(args)
+        tenant = options.get_tenant()
+        error = tenant.create_only(args.tenant_context,
+                                   args.tenant,
+                                   args.tenant_kubeconfig,
+                                   None)
 
-        if settings.output_active():
+        cluster_environment = options.get_cluster_environment(
+            args.cluster_environment, tenant)
+
+        if error:
+            logger.log_error(f"Join cluster {cluster_environment.name} "
+                             f"failed: {error}")
+            return
+
+        error = cluster_environment.join(args.cluster_environment,
+                                         args.context,
+                                         args.kubeconfig,
+                                         args.environment,
+                                         args.config,
+                                         args.version,
+                                         args.internal_url)
+
+        if error:
+            logger.log_error(f"Join cluster {cluster_environment.name} "
+                             f"failed: {error}")
+        elif settings.output_active():
             settings.output()
         elif settings.dry_run_active():
-            print("Dry run worker join completed")
+            print(f"Dry run join cluster {cluster_environment.name} "
+                  f"successfully completed")
         else:
-            print("Worker join completed")
+            print(f"Join cluster {cluster_environment.name} "
+                  "successfully completed")
     except Exception as e:
         print(traceback.format_exc())
-        print(f"\nAn exception occurred executing the "
-              f"worker join function: {e}", file=sys.stderr)
+        logger.log_error(f"\nAn exception occurred executing the "
+                         f"worker join function: {e}", file=sys.stderr)
         raise e

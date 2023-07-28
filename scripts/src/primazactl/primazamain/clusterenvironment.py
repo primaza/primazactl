@@ -46,7 +46,11 @@ class ClusterEnvironment(CustomNamespaced):
     def add_namespace(self, type, name):
         logger.log_entry(f"type: {type}, name: {name}")
         if not self.body:
-            self.read()
+            self.body = self.read()
+            if not self.body:
+                msg = f"Cluster environment {self.name} not found."
+                logger.log_error(msg)
+                raise RuntimeError(msg)
 
         if type == APPLICATION:
             entry = "applicationNamespaces"

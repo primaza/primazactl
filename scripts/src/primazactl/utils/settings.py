@@ -28,14 +28,8 @@ def set(args):
         output_type = args.output_type
     if args.dry_run != DRY_RUN_NONE:
         dry_run = args.dry_run
+        logger.set_dry_run(" (dry run) ")
     logger.log_info(f"Dry run: {dry_run}, Dry run yaml output: {output_type}")
-
-
-def get_dry_run():
-    if dry_run_active():
-        return " (dry run) "
-    else:
-        return ""
 
 
 def dry_run_active():
@@ -63,5 +57,5 @@ def add_resource(resource):
 def add_warning(message):
     global warnings
     if output_active():
-        warnings.append(f"WARNING:{get_dry_run()}{message}")
+        warnings.append(f"WARNING:{dry_run}{message}")
     logger.log_warning(message)

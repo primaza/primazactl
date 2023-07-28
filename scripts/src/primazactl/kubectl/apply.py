@@ -211,8 +211,7 @@ def apply_manifest(resource_list, client: client,
                 else:
                     msg = f'FAILED: {resource_action}: ' \
                           f'Exception: {body["message"]}'
-
                     logger.log_error(msg)
-                    errors.append(f'{settings.get_dry_run()}{msg}')
+                    errors.append(f'{settings.dry_run}{msg}')
 
     return errors

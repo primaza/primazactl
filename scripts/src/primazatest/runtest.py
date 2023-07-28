@@ -12,11 +12,16 @@ FAIL = '\033[91mFAIL\033[0m'
 FAILED = '\033[91mFAILED\033[0m'
 
 TENANT = "primaza-controller-system"
+CLUSTER_ENVIRONMENT = "primaza-environment"
 SERVICE_NAMESPACE = "service-agent-system"
 APPLICATION_NAMESPACE = "application-agent-system"
 TENANT_FOR_OUTPUT = "primaza-system"
 SERVICE_NAMESPACE_FOR_OUTPUT = "services"
 APPLICATION_NAMESPACE_FOR_OUTPUT = "applications"
+COMMAND_TENANT = "tenant"
+COMMAND_JOIN = "join"
+COMMAND_APP_NS = "application"
+COMMAND_SVC_NS = "server"
 
 
 def run_cmd(cmd, silent=False):
@@ -97,8 +102,8 @@ def test_args(command_args):
                                       None, fail_msg)
 
     args = ["drink"]
-    expect_error_msg = "error: argument {create,delete,join}: " \
-        "invalid choice: 'drink' (choose from 'create', 'delete', 'join')"
+    expect_error_msg = "error: argument {create,join,options}: " \
+        "invalid choice: 'drink' (choose from 'create', 'join', 'options')"
     fail_msg = "unexpected response invalid action"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
@@ -189,56 +194,12 @@ def test_main_install(venv_dir, config, version,
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False, None
 
-    if "Primaza tenant installed" not in out:
+    if f"Create primaza tenant {namespace} successfully completed" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False, None
 
-    if not dry_run:
-        if not check_pods(cluster, namespace):
-            print(f"[{FAIL}] main install pod is not running: {out}")
-            return False, None
-
     print(f"[{PASS}] main installed.")
     return True, None
-
-
-def check_pods(cluster, namespace):
-    outcome = True
-    for i in range(1, 60):
-
-        pods, err = run_cmd(["kubectl", "get", "pods", "-n",
-                             namespace, "--context",
-                             cluster], 1 < i < 60)
-
-        if pods:
-            if "Running" in pods and "2/2" in pods:
-                print(pods)
-                break
-            elif "ErrImagePull" in pods or "ImagePullBackOff" in pods:
-                print(pods)
-                outcome = False
-                break
-            elif i == 60:
-                print("---[{FAIL}]: Pods not running after 120s")
-                print(pods)
-                outcome = False
-        if err:
-            print(f"---[{FAIL}]: {err}")
-            outcome = False
-            break
-        time.sleep(2)
-
-    if not outcome:
-        time.sleep(5)
-        pods, err = run_cmd(["kubectl", "describe",
-                             "pods", "-n", namespace,
-                             "--context", cluster])
-        if pods:
-            print(pods)
-        if err:
-            print(err)
-
-    return outcome
 
 
 def get_cluster_internal_url(cluster_name: str) -> str:
@@ -261,12 +222,13 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
 
     internal_url = get_cluster_internal_url(
             worker_cluster.replace("kind-", ""))
+    cluster_environment = CLUSTER_ENVIRONMENT
 
     if version:
         command = [f"{venv_dir}/bin/primazactl",
                    "join", "cluster",
                    "-e", "test",
-                   "-d", "primaza-environment",
+                   "-d", cluster_environment,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
@@ -276,7 +238,7 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
         command = [f"{venv_dir}/bin/primazactl",
                    "join", "cluster",
                    "-e", "test",
-                   "-d", "primaza-environment",
+                   "-d", cluster_environment,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
@@ -305,11 +267,11 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
         print(f"[{FAIL}] Unexpected error response: {err}\n{out}")
         return False, None
 
-    if "Worker join completed" not in out:
+    if f"Join cluster {cluster_environment} successfully completed" not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
         return False, None
 
-    print(f"[{PASS}] Worker joined\n\n{out}")
+    print(f"[{PASS}] Join cluster {cluster_environment}\n\n{out}")
     return True, None
 
 
@@ -329,7 +291,7 @@ def test_application_namespace_create(venv_dir, namespace,
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "application-namespace",
                    namespace,
-                   "-d", "primaza-environment",
+                   "-d", CLUSTER_ENVIRONMENT,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
@@ -339,7 +301,7 @@ def test_application_namespace_create(venv_dir, namespace,
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "application-namespace",
                    namespace,
-                   "-d", "primaza-environment",
+                   "-d", CLUSTER_ENVIRONMENT,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
@@ -367,13 +329,9 @@ def test_application_namespace_create(venv_dir, namespace,
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False, None
 
-    if f"application namespace {namespace} was successfully created" \
+    if f"Create application namespace {namespace} successfully completed" \
             not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
-        return False, None
-
-    if not check_pods(worker_cluster, namespace):
-        print(f"[{FAIL}] application namespace pod is not running!\n\n{out}")
         return False, None
 
     print(f"[{PASS}] Application namespace created\n\n{out}")
@@ -396,7 +354,7 @@ def test_service_namespace_create(venv_dir, namespace,
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "service-namespace",
                    namespace,
-                   "-d", "primaza-environment",
+                   "-d", CLUSTER_ENVIRONMENT,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
@@ -406,7 +364,7 @@ def test_service_namespace_create(venv_dir, namespace,
         command = [f"{venv_dir}/bin/primazactl",
                    "create", "service-namespace",
                    namespace,
-                   "-d", "primaza-environment",
+                   "-d", CLUSTER_ENVIRONMENT,
                    "-c", worker_cluster,
                    "-m", main_cluster,
                    "-t", tenant,
@@ -435,13 +393,9 @@ def test_service_namespace_create(venv_dir, namespace,
         print(f"[{FAIL}] Unexpected error response: {err}")
         return False, None
 
-    if f"service namespace {namespace} was successfully created" \
+    if f"Create service namespace {namespace} successfully completed" \
             not in out:
         print(f"[{FAIL}] Unexpected response: {out}")
-        return False, None
-
-    if not check_pods(worker_cluster, namespace):
-        print(f"[{FAIL}] service namespace pod is not running!\n\n{out}")
         return False, None
 
     print(f"[{PASS}] Service namespace created\n\n{out}")
@@ -629,11 +583,14 @@ def test_dry_run(command_args, dry_run_type):
     outcome = check_dry_run(dry_run_type,
                             command_args.main_config,
                             worker_resp,
-                            "Dry run Primaza tenant install complete")
+                            COMMAND_TENANT,
+                            TENANT)
     if outcome:
-        print(f"[{PASS}] {dry_run_type} dry run tenant install test passed")
+        print(f"[{PASS}] {dry_run_type} dry run tenant {TENANT} "
+              f"install test passed")
     else:
-        print(f"[{FAIL}] {dry_run_type} dry run tenant install test failed.")
+        print(f"[{FAIL}] {dry_run_type} dry run tenant {TENANT} "
+              f"install test failed.")
 
     _, worker_resp = test_worker_install(command_args.venv_dir,
                                          command_args.worker_config,
@@ -646,7 +603,8 @@ def test_dry_run(command_args, dry_run_type):
     worker_outcome = check_dry_run(dry_run_type,
                                    command_args.worker_config,
                                    worker_resp,
-                                   "Dry run worker join completed")
+                                   COMMAND_JOIN,
+                                   CLUSTER_ENVIRONMENT)
     if worker_outcome:
         print(f"[{PASS}] {dry_run_type} dry run worker join test passed")
     else:
@@ -665,8 +623,8 @@ def test_dry_run(command_args, dry_run_type):
     app_outcome = check_dry_run(dry_run_type,
                                 command_args.app_config,
                                 app_resp,
-                                f"dry run create application namespace "
-                                f"{APPLICATION_NAMESPACE} completed.")
+                                COMMAND_APP_NS,
+                                APPLICATION_NAMESPACE)
     if app_outcome:
         print(f"[{PASS}] {dry_run_type} dry run application namespace "
               f"create test passed")
@@ -687,8 +645,8 @@ def test_dry_run(command_args, dry_run_type):
     service_outcome = check_dry_run(dry_run_type,
                                     command_args.service_config,
                                     service_resp,
-                                    f"dry run create service namespace "
-                                    f"{SERVICE_NAMESPACE} completed.")
+                                    COMMAND_SVC_NS,
+                                    SERVICE_NAMESPACE)
     if service_outcome:
         print(f"[{PASS}] {dry_run_type} dry run service namespace "
               f"create test passed")
@@ -699,13 +657,90 @@ def test_dry_run(command_args, dry_run_type):
     return outcome & worker_outcome & app_outcome & service_outcome
 
 
-def check_dry_run(dry_run_type, manifest_file, resp, expected_last_message):
+def test_dry_run_with_options(command_args):
+
+    options_yaml = update_options_file(command_args.options_file)
+    tenant = options_yaml["name"]
+    cluster_options = options_yaml["clusterEnvironments"][0]
+    cluster_env = cluster_options["name"]
+    app_namespace = cluster_options["applicationNamespaces"][0]["name"]
+    svc_namespace = cluster_options["serviceNamespaces"][0]["name"]
+
+    command = [f"{command_args.venv_dir}/bin/primazactl", "options",
+               "-p", command_args.options_file,
+               "-y", "server"]
+    resp, err = run_cmd(command)
+
+    if err:
+        print(f"[{FAIL}] Unexpected error response: {err}")
+        outcome = False
+    elif resp:
+        outcome = True
+        out_lines = None
+        index = 0
+        for line in resp.splitlines():
+            if line.strip(' \t\n\r') == "":
+                if index == 0:
+                    cfg = command_args.main_config
+                    cmd = COMMAND_TENANT
+                    name = tenant
+                    index = 1
+                elif index == 1:
+                    cfg = command_args.worker_config
+                    cmd = COMMAND_JOIN
+                    name = cluster_env
+                    index = 2
+                elif index == 2:
+                    cfg = command_args.app_config
+                    cmd = COMMAND_APP_NS
+                    name = app_namespace
+                    index = 3
+                elif index == 3:
+                    cfg = command_args.service_config
+                    cmd = COMMAND_SVC_NS
+                    name = svc_namespace
+                    index = 4
+
+                if index < 4:
+                    print(f"check the output:{cfg}:{cmd}:{name}:")
+                    print(f"output is: {out_lines}")
+                    outcome = outcome & check_dry_run("server", cfg, out_lines,
+                                                      cmd, name)
+
+                out_lines = ""
+            else:
+                out_lines = f"{out_lines}\n{line}" if out_lines else line
+
+    else:
+        print(f"[{FAIL}] no response received for dry-run test")
+        outcome = False
+
+    return outcome
+
+
+def check_dry_run(dry_run_type, manifest_file, resp,
+                  check_command, subject_name):
 
     with open(manifest_file, 'r') as manifest:
         manifest_yaml = yaml.safe_load_all(manifest)
         manifest_list = list(manifest_yaml)
 
     expect_lines = 0 if dry_run_type == "client" else len(manifest_list)
+
+    if check_command == COMMAND_TENANT:
+        expected_last_message = f"Dry run create primaza tenant " \
+                                f"{subject_name} successfully completed"
+    elif check_command == COMMAND_JOIN:
+        expected_last_message = f"Dry run join cluster {subject_name} " \
+                                f"successfully completed"
+    elif check_command == COMMAND_APP_NS:
+        expected_last_message = f"Dry run create application namespace " \
+                                f"{subject_name} successfully completed"
+    elif check_command == COMMAND_SVC_NS:
+        expected_last_message = f"Dry run create service namespace " \
+                                f"{subject_name} successfully completed"
+    else:
+        expected_last_message = "successfully completed"
 
     outcome = True
 
@@ -836,6 +871,82 @@ def check_output(manifest_file, resp):
     return outcome
 
 
+def test_options(command_args):
+
+    options_yaml = update_options_file(command_args.options_file)
+    tenant = options_yaml["name"]
+    cluster_options = options_yaml["clusterEnvironments"][0]
+    cluster_env = cluster_options["name"]
+    app_namespace = cluster_options["applicationNamespaces"][0]["name"]
+    svc_namespace = cluster_options["serviceNamespaces"][0]["name"]
+
+    command = [f"{command_args.venv_dir}/bin/primazactl", "options",
+               "-p", command_args.options_file]
+    out, err = run_cmd(command)
+
+    install_all_outcome = True
+    if err:
+        print(f"[{FAIL}] Unexpected error response: {err}")
+        install_all_outcome = False
+    elif out:
+        if not check_options_out(out, f"Create primaza tenant {tenant} "
+                                      f"successfully completed"):
+            install_all_outcome = False
+        elif not check_options_out(out, "Join cluster "
+                                        f"{cluster_env} "
+                                        "successfully completed"):
+            install_all_outcome = False
+        elif not check_options_out(out, "Create application namespace "
+                                        f"{app_namespace} "
+                                        "successfully completed"):
+            install_all_outcome = False
+        elif not check_options_out(out, "Create service namespace "
+                                        f"{svc_namespace} "
+                                        "successfully completed"):
+            install_all_outcome = False
+        elif not check_options_out(out, "Primaza install from options "
+                                        "file complete"):
+            install_all_outcome = False
+        else:
+            print(f"[{PASS}] install from options file "
+                  f"{command_args.options_file} passed")
+    else:
+        print(f"[{FAIL}] install from options file "
+              f"{command_args.options_file} did not produce any output")
+
+    return install_all_outcome
+
+
+def check_options_out(out, expect_out):
+    if expect_out not in out:
+        print(f"[{FAIL}] Unexpected response: {out}. "
+              f"Expected to contain {expect_out}")
+        return False
+    return True
+
+
+def update_options_file(options_file):
+    with open(options_file) as options:
+        options_yaml = yaml.safe_load(options)
+
+    main_url = get_cluster_internal_url(options_yaml["context"].
+                                        replace("kind-", ""))
+    options_yaml['internal_url'] = main_url
+
+    for cluster_environment in options_yaml["clusterEnvironments"]:
+        target_cluster = cluster_environment["targetCluster"]
+        worker_url = get_cluster_internal_url(target_cluster["context"].
+                                              replace("kind-", ""))
+        target_cluster["internalUrl"] = worker_url
+
+    print(options_yaml)
+
+    with open(options_file, 'w') as options:
+        yaml.dump(options_yaml, options)
+
+    return options_yaml
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='runtest',
@@ -852,12 +963,12 @@ def main():
                         dest="main_config", type=str, required=False,
                         help="main config file.")
     parser.add_argument("-c", "--worker_context",
-                        dest="worker_context", type=str, required=True,
+                        dest="worker_context", type=str, required=False,
                         help="name of cluster, as it appears in kubeconfig, "
                              "on which to install worker")
     parser.add_argument("-m", "--main_context",
                         dest="main_context", type=str,
-                        required=True,
+                        required=False,
                         help="name of cluster, as it appears in kubeconfig, "
                              "on which main is installed. "
                              "Defaults to worker install cluster.")
@@ -885,6 +996,11 @@ def main():
                         required=False,
                         action="count",
                         help="Set to test output yaml")
+    parser.add_argument("-t", "--options-file",
+                        dest="options_file",
+                        required=False,
+                        type=str,
+                        help="Set to options file to run options test")
     parser.add_argument("-i", "--input_dir",
                         dest="input_dir",
                         help="directory for kubeconfigs used for user tests",
@@ -895,11 +1011,15 @@ def main():
     if args.dry_run:
         outcome = test_dry_run(args, "client")
         outcome = outcome & test_dry_run(args, "server")
+        if args.options_file:
+            outcome = outcome & test_dry_run_with_options(args)
     elif args.output_yaml:
         outcome = test_output(args, "client")
         outcome = outcome & test_output(args)
     elif args.test_user:
         outcome = test_with_user(args)
+    elif args.options_file:
+        outcome = test_options(args)
     else:
         outcome = test_args(args)
         outcome = outcome & test_create(args)
