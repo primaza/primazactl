@@ -25,13 +25,14 @@ def add_shared_args(parser: argparse.ArgumentParser):
         type=semvertag_or_latest,
         default=__primaza_version__)
 
-    parser.add_argument("-p", "--options",
-                        dest="options_file",
-                        type=existing_file,
-                        required=False,
-                        help="primaza options file in which default "
-                             "command line options are specified. Options "
-                             "set on the command line take precedence.")
+    parser.add_argument(
+        "-p", "--options",
+        dest="options_file",
+        type=existing_file,
+        required=False,
+        help="primaza options file in which default "
+             "command line options are specified. Options "
+             "set on the command line take precedence.")
 
     # main
     parser.add_argument(

@@ -47,13 +47,14 @@ def add_args_join(parser: argparse.ArgumentParser):
         type=semvertag_or_latest,
         default=None)
 
-    parser.add_argument("-p", "--options",
-                        dest="options_file",
-                        type=existing_file,
-                        required=False,
-                        help="primaza options file in which default "
-                             "command line options are specified. Options "
-                             "set on the command line take precedence.")
+    parser.add_argument(
+        "-p", "--options",
+        dest="options_file",
+        type=existing_file,
+        required=False,
+        help="primaza options file in which default "
+             "command line options are specified. Options "
+             "set on the command line take precedence.")
 
     # worker
     parser.add_argument(
@@ -156,21 +157,28 @@ def join_cluster(args):
 
     try:
 
-        if not args.options_file:
-            if not args.environment and args.cluster_environment:
-                print("[ERROR] must specify either an options file or both "
-                      "a cluster environment and an environment")
-                return
+        if not args.options_file and not (args.environment and
+                                          args.cluster_environment):
+            print("[ERROR] must specify either an options file or both "
+                  "a cluster environment and an environment")
+            return
 
         settings.set(args)
 
         options = Options(args)
+
+        # get a tenant, even if the an options file was not
+        # provided it sets the default values
         tenant = options.get_tenant()
+
+        # just want to create the objects, tenant should already be installed.
         error = tenant.create_only(args.tenant_context,
                                    args.tenant,
                                    args.tenant_kubeconfig,
                                    None)
 
+        # get a cluster_environment, even if the an options file was not
+        # provided it sets the default values
         cluster_environment = options.get_cluster_environment(
             args.cluster_environment, tenant)
 
@@ -179,6 +187,8 @@ def join_cluster(args):
                              f"failed: {error}")
             return
 
+        # join the cluster, use command line args which will overwrite
+        # values from options if specified.
         error = cluster_environment.join(args.cluster_environment,
                                          args.context,
                                          args.kubeconfig,

@@ -34,7 +34,12 @@ def create_tenant(args):
     try:
         settings.set(args)
 
+        # get tenant from options, even if the an options file was not
+        # provided it sets the default values
         tenant = Options(args).get_tenant()
+
+        # install the tenant, use command line args which will overwrite
+        # values from options if specified.
         error = tenant.install(args.context,
                                args.tenant,
                                args.kubeconfig,
@@ -51,6 +56,7 @@ def create_tenant(args):
             print(f"Dry run create primaza tenant {tenant.tenant} "
                   "successfully completed.")
         else:
+            # check tenant pod is running
             error_message = tenant.main.check()
             if error_message:
                 print(f"Primaza tenant {tenant.tenant} create failed: "

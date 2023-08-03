@@ -53,14 +53,18 @@ def run_options(args):
         settings.set(args)
 
         options = Options(args)
+
+        # get tenant based on values from the options file
         tenant = options.get_tenant()
 
+        # install tenant with no additional command line arguments
         error = tenant.install(None, None, None, None, None)
         if error:
             logger.log_error(f"Primaza tenant {tenant.tenant} "
                              f"install failed: {error}")
             return
 
+        # check tenant is installed
         error = tenant.main.check()
         if error:
             logger.log_error(f"Primaza tenant {tenant.tenant} "
@@ -76,8 +80,11 @@ def run_options(args):
                 print(f"Create primaza tenant {tenant.tenant} "
                       f"successfully completed")
 
+        # Options file can specify multiple cluster environment,
+        # process each one
         for cluster_environment in options.get_cluster_environments(tenant):
 
+            # join cluster with no additional command line arguments.
             error = cluster_environment.join(None, None, None,
                                              None, None, None, None)
             if error:
@@ -93,28 +100,38 @@ def run_options(args):
                     print(f"Join cluster {cluster_environment.name} "
                           "successfully completed.")
 
+            # get all of the agents specified in the cluster environment
             agents = cluster_environment.get_agents(APPLICATION)
             for svc_agent in cluster_environment.get_agents(SERVICE):
                 agents.append(svc_agent)
 
             if len(agents) > 0:
 
+                # create the primaza identity and get a kubeconfig with
+                # details required to communicate with the identity
+                # just need to do this once for all agents
                 main_user = tenant.main.create_primaza_identity(
                     cluster_environment.name)
                 kcfg = tenant.main.get_kubeconfig(main_user)
 
-                create_secret = False
+                create_secret = True
                 for agent in agents:
+
+                    # create agent
                     error = agent.create(None, None)
                     if error:
                         logger.log_error(f"Create of {agent.type} namespace "
                                          f"{agent.name} failed: {error}")
                     elif create_secret:
+                        # add a secret to cluster environment to enable
+                        # communication with the tenant.
+                        # just need to do this once for all agents.
                         cluster_environment.worker.\
                             create_namespaced_kubeconfig_secret(kcfg,
                                                                 tenant.tenant)
                         create_secret = False
 
+                    # check agent was created.
                     agent.agent.check()
                     if not settings.output_active():
                         if settings.dry_run_active():

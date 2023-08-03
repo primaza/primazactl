@@ -170,7 +170,8 @@ class WorkerNamespace(PrimazaCluster):
             if pod_error:
                 error_messages.extend(pod_error)
         else:
-            error_message.extend("Tenant pod not found.")
+            error_message.extend("Control Plane pod not found in "
+                                 f"namespace {self.namespace}.")
 
         if error_messages:
             raise RuntimeError(

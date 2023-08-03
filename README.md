@@ -152,7 +152,7 @@ options:
   -c CONTEXT, --context CONTEXT
                         name of cluster, as it appears in kubeconfig, on which to create the tenant, default: current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home-directory>/.kube/config
   -y {client,server,none}, --dry-run {client,server,none}
                         Set for dry run (default: none)
   -o {yaml,none}, --output {yaml,none}
@@ -229,7 +229,7 @@ options:
   -c CONTEXT, --context CONTEXT
                         name of cluster, as it appears in kubeconfig, to join, default: current kubeconfig context
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home-directory>/.kube/config
   -u INTERNAL_URL, --internal-url INTERNAL_URL
                         the url used by Primaza's Control Plane to reach the joined cluster
   -d CLUSTER_ENVIRONMENT, --cluster-environment CLUSTER_ENVIRONMENT
@@ -238,7 +238,7 @@ options:
                         the Environment that will be associated to the ClusterEnvironment
   -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
                         path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
-                        /Users/martinmulholland/.kube/config
+                        /<home-directory>/.kube/config
   -m TENANT_CONTEXT, --tenant-context TENANT_CONTEXT
                         name of cluster, as it appears in kubeconfig, on which primaza tenant was created. Default: current kubeconfig context
   -t TENANT, --tenant TENANT
@@ -343,10 +343,10 @@ options:
   -v VERSION, --version VERSION
                         Version of primaza to use, default: latest. Ignored if --config is set.
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home-directory>/.kube/config
   -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
                         path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
-                        /Users/martinmulholland/.kube/config
+                        /<home-directory>/.kube/config
   -p OPTIONS_FILE, --options OPTIONS_FILE
                         primaza options file in which default command line options are specified. Options set on the command line take precedence.
   -y {client,server,none}, --dry-run {client,server,none}
@@ -444,10 +444,10 @@ options:
   -v VERSION, --version VERSION
                         Version of primaza to use, default: latest. Ignored if --config is set.
   -k KUBECONFIG, --kubeconfig KUBECONFIG
-                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /Users/martinmulholland/.kube/config
+                        path to kubeconfig file, default: KUBECONFIG environment variable if set, otherwise /<home-directory>/.kube/config
   -l TENANT_KUBECONFIG, --tenant-kubeconfig TENANT_KUBECONFIG
                         path to kubeconfig file for the tenant, default: KUBECONFIG environment variable if set, otherwise
-                        /Users/martinmulholland/.kube/config
+                        /<home-directory>/.kube/config
   -p OPTIONS_FILE, --options OPTIONS_FILE
                         primaza options file in which default command line options are specified. Options set on the command line take precedence.
   -y {client,server,none}, --dry-run {client,server,none}

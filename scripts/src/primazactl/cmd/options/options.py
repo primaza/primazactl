@@ -4,32 +4,6 @@ from .tenant import Tenant
 from .cluster_environment import ClusterEnvironment
 from .defaults import defaults
 
-#  apiVersion: primaza.io/v1alpha1
-#  kind: Tenant
-#  name: alice
-#  kubeconfig: ~/.kube/config
-#  context: primaza
-#  version: latest
-#  manifest_directory: ./out/config
-#  clusterEnvironments:
-#    - name: onprem-cluster
-#      environment: dev
-#      targetCluster:
-#           kubeconfig: ~/.kube/config
-#           context: onprem
-#      applicationNamespaces:
-#           - name: alice-app
-#      serviceNamespaces:
-#           - name: alice-svc
-#    - name: aws-cluster
-#      environment: dev
-#      targetCluster:
-#           kubeconfig: ~/.kube/config-aws
-#           context: aws
-#      ["applicationNamespaces:"]
-#           - name: aws-app
-#       serviceNamespaces:
-#           - name: aws-svc
 
 API_VERSION: str = "apiVersion"
 KIND: str = "kind"
@@ -57,11 +31,17 @@ class Options(object):
                     self.options_empty = False
                     logger.log_info(f"Option file content: {self.options}")
                 else:
-                    logger.log_warning("Invalid \'kind\' value in options "
-                                       "file, options file will be ignored")
+                    message = 'Invalid or no \'kind\' value in options ' \
+                              'file, kind is required to be set to ' \
+                              f'{defaults["kind"]}.'
+                    logger.log_error("message")
+                    raise RuntimeError(f'[ERROR] {message}')
             else:
-                logger.log_warning("Invalid \'apiVersion\' value in options "
-                                   "file, options file will be ignored")
+                message = 'Invalid or no \'apiVersion\' value in options ' \
+                          'file, apiVersion is required to be set to ' \
+                          f'{defaults["apiVersion"]}'
+                logger.log_error("message")
+                raise RuntimeError(f'[ERROR] {message}')
         else:
             logger.log_info("no options file")
             self.options = {}
@@ -74,25 +54,18 @@ class Options(object):
 
     def get_cluster_environments(self, tenant):
         cluster_environments = []
-        if "clusterEnvironments" in self.options:
-            for cluster_environment in self.options["clusterEnvironments"]:
-                cluster_environments.append(
+        for cluster_environment in self.options.get("clusterEnvironments", []):
+            cluster_environments.append(
                     ClusterEnvironment(cluster_environment, tenant))
         return cluster_environments
 
     def get_cluster_environment(self, name, tenant):
-        if name:
-            if "clusterEnvironments" in self.options:
-                for cluster_environment in self.options["clusterEnvironments"]:
-                    if "name" in cluster_environment and \
-                            name == cluster_environment["name"]:
-                        return ClusterEnvironment(cluster_environment, tenant)
-                logger.log_error(f"cluster environment {name} not found in "
-                                 f"options file")
-            else:
-                cluster_environment = ClusterEnvironment({}, tenant)
-                cluster_environment.name = name
-                return cluster_environment
-        else:
-            cluster_environment = ClusterEnvironment({}, tenant)
-            return cluster_environment
+
+        for cluster_environment in self.options.get("clusterEnvironments", []):
+            if "name" in cluster_environment and \
+                    name == cluster_environment["name"]:
+                return ClusterEnvironment(cluster_environment, tenant)
+
+        cluster_environment = ClusterEnvironment({}, tenant)
+        cluster_environment.name = name
+        return cluster_environment

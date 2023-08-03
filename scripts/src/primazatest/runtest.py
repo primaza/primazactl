@@ -1005,6 +1005,10 @@ def main():
                         dest="input_dir",
                         help="directory for kubeconfigs used for user tests",
                         required=False)
+    parser.add_argument("-j", "--sa_namespace",
+                        dest="sa_namespace",
+                        help="directory for kubeconfigs used for user tests",
+                        required=False)
 
     args = parser.parse_args()
 
