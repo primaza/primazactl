@@ -14,7 +14,7 @@ from primazactl.kubectl.constants import APP_AGENT_CONFIG, SVC_AGENT_CONFIG
 from .workercluster import WorkerCluster
 
 
-class WorkerNamespace(PrimazaCluster):
+class AgentNamespace(PrimazaCluster):
 
     main_cluster: str = None
     type: str = None

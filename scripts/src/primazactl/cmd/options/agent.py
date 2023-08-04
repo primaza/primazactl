@@ -1,6 +1,6 @@
 import os
 from primazactl.cmd.create.namespace.constants import APPLICATION
-from primazactl.primazaworker.workernamespace import WorkerNamespace
+from primazactl.primazaworker.agentnamespace import AgentNamespace
 from primazactl.utils import logger
 from .tenant import Tenant
 from .defaults import defaults
@@ -14,7 +14,7 @@ class Agent(object):
     name: str = None
     manifest: str = None
     version: str = None
-    agent: WorkerNamespace = None
+    agent: AgentNamespace = None
 
     def __init__(self, name, type, cluster_environment):
 
@@ -58,16 +58,16 @@ class Agent(object):
             return f"{self.type} namespace create requires a " \
                    f"cluster environment name."
 
-        logger.log_info("Create WorkerNamespace")
-        self.agent = WorkerNamespace(self.type,
-                                     self.name,
-                                     self.cluster_environment.name,
-                                     self.cluster_environment.context,
-                                     self.cluster_environment.kube_config,
-                                     self.manifest,
-                                     self.version,
-                                     self.tenant.main,
-                                     self.cluster_environment.worker)
+        logger.log_info("Create AgentNamespace")
+        self.agent = AgentNamespace(self.type,
+                                    self.name,
+                                    self.cluster_environment.name,
+                                    self.cluster_environment.context,
+                                    self.cluster_environment.kube_config,
+                                    self.manifest,
+                                    self.version,
+                                    self.tenant.main,
+                                    self.cluster_environment.worker)
         logger.log_info("Create Agent")
         self.agent.create()
         return None

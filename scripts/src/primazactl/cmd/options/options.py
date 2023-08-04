@@ -62,8 +62,7 @@ class Options(object):
     def get_cluster_environment(self, name, tenant):
 
         for cluster_environment in self.options.get("clusterEnvironments", []):
-            if "name" in cluster_environment and \
-                    name == cluster_environment["name"]:
+            if name == cluster_environment.get("name", None):
                 return ClusterEnvironment(cluster_environment, tenant)
 
         cluster_environment = ClusterEnvironment({}, tenant)
