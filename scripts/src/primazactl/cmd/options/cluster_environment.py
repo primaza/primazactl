@@ -28,20 +28,17 @@ class ClusterEnvironment(object):
         self.options = options
         self.tenant = tenant
 
-        if "name" in options:
-            self.name = options["name"]
+        self.name = options.get("name", None)
 
-        if "environment" in self.options:
-            self.environment = self.options["environment"]
+        self.environment = options.get("environment", None)
 
-        if "targetCluster" in self.options:
-            target_cluster = self.options["targetCluster"]
-            if "kubeconfig" in target_cluster:
-                self.kube_config = expand_path(target_cluster["kubeconfig"])
-            if "context" in target_cluster:
-                self.context = target_cluster["context"]
-            if "internalUrl" in target_cluster:
-                self.internal_url = target_cluster["internalUrl"]
+        target_cluster = options.get("targetCluster", None)
+        if target_cluster:
+            kube_config = target_cluster.get("kubeconfig", None)
+            if kube_config:
+                self.kube_config = expand_path(kube_config)
+            self.context = target_cluster.get("context", None)
+            self.internal_url = target_cluster.get("internalUrl", None)
 
         if tenant.manifest_directory:
             self.manifest = os.path.join(tenant.manifest_directory,

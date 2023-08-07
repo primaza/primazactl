@@ -20,36 +20,37 @@ class Tenant(object):
 
     def __init__(self, options):
 
-        self.tenant = options["name"] if "name" in options \
-            else defaults["tenant"]
-        logger.log_info(f"Namespace from options: {self.tenant}")
+        self.tenant = options.get("name", None)
+        if not self.tenant:
+            self.tennat = defaults["tenant"]
+        logger.log_info(f"Namespace: {self.tenant}")
 
-        if "kubeconfig" in options:
-            self.kube_config = expand_path(options["kubeconfig"])
-            logger.log_info(f"kubeconfig from options: {self.kube_config}")
-        else:
-            self.kubeconfig = defaults["kubeconfig"]
+        control_plane = options.get("controlPlane", None)
+        if control_plane:
+            self.kubeconfig = control_plane.get("kubeconfig", None)
+            if not self.kubeconfig:
+                self.kubeconfig = defaults["kubeconfig"]
+            logger.log_info(f"kubeconfig: {self.kube_config}")
 
-        if "context" in options:
-            self.context = options["context"]
-            logger.log_info(f"context from options: {self.context}")
+            self.context = control_plane.get("context", None)
+            logger.log_info(f"context: {self.context}")
 
-        if "manifestDirectory" in options:
-            self.manifest_directory = expand_path(
-                options["manifestDirectory"])
+            self.internal_url = options.get("internalUrl", None)
+            logger.log_info(f"internalUrl: {self.context}")
+
+        manifest_dir = options.get("manifestDirectory")
+        if manifest_dir:
+            self.manifest_directory = expand_path(manifest_dir)
             logger.log_info("manifest directory from options: "
                             f"{self.manifest}")
             self.manifest = os.path.join(self.manifest_directory,
                                          defaults["tenant_config"])
             logger.log_info(f"calculated manifest: {self.manifest}")
 
-        self.version = options["version"] if "version" in options \
-            else defaults["version"]
-
-        if "internalUrl" in options:
-            self.internal_url = options["internalUrl"]
-
-        logger.log_info(f"version in options: {self.version}")
+        self.version = options.get("version", None)
+        if not self.version:
+            self.version = defaults["version"]
+        logger.log_info(f"version: {self.version}")
 
     def create_only(self, context, tenant, kubeconfig, internal_url):
 

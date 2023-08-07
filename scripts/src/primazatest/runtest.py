@@ -929,9 +929,9 @@ def update_options_file(options_file):
     with open(options_file) as options:
         options_yaml = yaml.safe_load(options)
 
-    main_url = get_cluster_internal_url(options_yaml["context"].
-                                        replace("kind-", ""))
-    options_yaml['internal_url'] = main_url
+    main_url = get_cluster_internal_url(
+        options_yaml['controlPlane']["context"].replace("kind-", ""))
+    options_yaml['controlPlane']['internalUrl'] = main_url
 
     for cluster_environment in options_yaml["clusterEnvironments"]:
         target_cluster = cluster_environment["targetCluster"]

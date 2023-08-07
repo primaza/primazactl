@@ -515,12 +515,13 @@ The options file define a tenant, one or more cluster environments each with one
 ```
 apiVersion: primaza.io/v1alpha1
 kind: Tenant
-kubeconfig: ~/.kube/config
-manifestDirectory: ./out/config
 name: primaza-alice
+manifestDirectory: ./out/config
 version: latest
-context: kind-primazactl-tenant-test
-internalUrl:
+controlPlane:
+    context: kind-primazactl-tenant-test
+    kubeconfig: ~/.kube/config
+    internalUrl:
 clusterEnvironments:
 - name: worker-alice
   environment: test
@@ -553,7 +554,7 @@ options:
 - `--options`
     - An options with values for creating primaza resources.
     - The entire contents will be processed.
-        - A tenant will be created.
+        - A tenant will be created in the primaza control plane.
         - One or more cluster environments will be created
         - For each cluster environment:
             - One or more application namespace will be created.
