@@ -4,6 +4,7 @@ from primazactl.utils import settings
 from primazactl.kube.namespace import Namespace
 from primazactl.kube.role import Role
 from primazactl.kube.rolebinding import RoleBinding
+from primazactl.kube.pod import Pod
 from primazactl.kube.roles.primazaroles import get_primaza_namespace_role
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.primazamain.maincluster import MainCluster
@@ -13,7 +14,7 @@ from primazactl.kubectl.constants import APP_AGENT_CONFIG, SVC_AGENT_CONFIG
 from .workercluster import WorkerCluster
 
 
-class WorkerNamespace(PrimazaCluster):
+class AgentNamespace(PrimazaCluster):
 
     main_cluster: str = None
     type: str = None
@@ -143,7 +144,6 @@ class WorkerNamespace(PrimazaCluster):
                 self.namespace)
             if error_message:
                 error_messages.extend(error_message)
-
         else:
             error_message = self.check_service_account_roles(
                 "primaza-svc-agent",
@@ -161,6 +161,17 @@ class WorkerNamespace(PrimazaCluster):
                 names.get_rolebinding_name(self.user_type), self.namespace)
             if error_message:
                 error_messages.extend(error_message)
+
+        pod = Pod(self.kubeconfig.get_api_client(), self.namespace)
+        pod_name = pod.get_primaza_pod_name()
+        logger.log_info(f"Pod name {pod_name}")
+        if pod_name:
+            pod_error = pod.wait_for_running()
+            if pod_error:
+                error_messages.extend(pod_error)
+        else:
+            error_message.extend("Control Plane pod not found in "
+                                 f"namespace {self.namespace}.")
 
         if error_messages:
             raise RuntimeError(

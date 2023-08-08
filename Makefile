@@ -105,6 +105,8 @@ KEY_FILE =  $(KEY_FILE_DIR)/$(KEY_FILE_NAME)
 
 VERSION_FILE = $(SCRIPTS_DIR)/src/primazactl/version.py
 
+OPTIONS_FILE = $(SCRIPTS_DIR)/src/primazatest/options/primaza-alice.yaml
+
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
@@ -214,7 +216,7 @@ test-users: setup-test create-users
 
 .PHONY: test-dry-run
 test-dry-run: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -d -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+	$(PYTHON_VENV_DIR)/bin/primazatest -d -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE) -t $(OPTIONS_FILE)
 
 .PHONY test-local-no-setup:
 	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
@@ -222,6 +224,10 @@ test-dry-run: setup-test
 .PHONY: test-output
 test-output: setup-test
 	$(PYTHON_VENV_DIR)/bin/primazatest -o -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+
+.PHONY: test-apply
+test-apply: setup-test
+	$(PYTHON_VENV_DIR)/bin/primazatest -t $(OPTIONS_FILE) -p $(PYTHON_VENV_DIR)
 
 .PHONY: create-users
 create-users: primazactl
@@ -253,5 +259,6 @@ clean: clean-temp
 	rm -rf $(LOCALBIN)
 	-kind delete cluster --name $(KIND_CLUSTER_TENANT_NAME)
 	-kind delete cluster --name $(KIND_CLUSTER_JOIN_NAME)
+
 	-docker image rm $(IMG_APP_LOCAL)
 	-docker image rm $(IMG_SVC_LOCAL)

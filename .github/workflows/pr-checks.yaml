@@ -39,3 +39,7 @@ jobs:
       - name: run test with output
         run: make test-output
 
+      - name: run apply command
+        run: make test-apply
+
+

@@ -6,14 +6,12 @@ from pathlib import Path
 from primazactl.types import kubernetes_name, \
     existing_file, \
     semvertag_or_latest
-from primazactl.primazaworker.workernamespace import WorkerNamespace
-from primazactl.primazaworker.workercluster import WorkerCluster
-from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.version import __primaza_version__
 from .constants import SERVICE, APPLICATION
-from primazactl.utils.kubeconfig import from_env
 from primazactl.utils import settings
+from primazactl.utils import logger
+from primazactl.cmd.apply.options import Options
 
 
 def add_args_namespace(parser: argparse.ArgumentParser, type):
@@ -63,7 +61,7 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         type=kubernetes_name,
         required=False,
         help=f"tenant to use. Default: {DEFAULT_TENANT}",
-        default=DEFAULT_TENANT)
+        default=None)
 
     parser.add_argument(
         "-u", "--tenant-internal-url",
@@ -81,7 +79,7 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         help=f"Version of primaza to use, default: {__primaza_version__}. "
              "Ignored if --config is set.",
         type=semvertag_or_latest,
-        default=__primaza_version__)
+        default=None)
 
     parser.add_argument(
         "-k", "--kubeconfig",
@@ -91,7 +89,7 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
                    environment variable if set, otherwise \
                    {(os.path.join(Path.home(),'.kube','config'))}",
         type=existing_file,
-        default=from_env())
+        default=None)
 
     parser.add_argument(
         "-l", "--tenant-kubeconfig",
@@ -101,61 +99,103 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
                    environment variable if set, otherwise \
                    {(os.path.join(Path.home(),'.kube','config'))}",
         type=existing_file,
-        default=from_env())
+        default=None)
+
+    parser.add_argument(
+        "-p", "--options",
+        dest="options_file",
+        type=existing_file,
+        required=False,
+        help="primaza options file in which default "
+             "command line options are specified. Options "
+             "set on the command line take precedence.")
+
+    parser.add_argument(
+        "-y", "--dry-run",
+        dest="dry_run",
+        type=str,
+        required=False,
+        choices=settings.DRY_RUN_CHOICES,
+        default=settings.DRY_RUN_NONE,
+        help=f"Set for dry run (default: {settings.DRY_RUN_NONE})")
+
+    parser.add_argument(
+        "-o", "--output",
+        dest="output_type",
+        type=str,
+        required=False,
+        choices=settings.OUTPUT_CHOICES,
+        default=settings.OUTPUT_NONE,
+        help="Set to get output of resources which are created "
+             f"(default: {settings.OUTPUT_NONE}).")
 
 
 def __create_namespace(args, type):
     try:
         settings.set(args)
-        main = MainCluster(context=args.tenant_context,
-                           namespace=args.tenant,
-                           kubeconfig_path=args.tenant_kubeconfig,
-                           config_file=None,
-                           version=None,
-                           internal_url=args.tenant_internal_url,
-                           )
 
-        worker = WorkerCluster(
-            primaza_main=main,
-            context=args.context,
-            kubeconfig_file=args.kubeconfig,
-            config_file=None,
-            version=None,
-            environment=None,
-            cluster_environment=args.cluster_environment,
-            tenant=args.tenant,
-        )
+        options = Options(args)
 
-        main_user = main.create_primaza_identity(
-            args.cluster_environment)
-        kcfg = main.get_kubeconfig(main_user)
+        # get a tenant, even if the an options file was not
+        # provided it sets the default values
+        tenant = options.get_tenant()
 
-        namespace = WorkerNamespace(type,
-                                    args.namespace,
-                                    args.cluster_environment,
-                                    args.context,
-                                    args.kubeconfig,
-                                    args.config,
-                                    args.version,
-                                    main,
-                                    worker)
-        namespace.create()
+        # just want to create the objects, tenant should already be installed.
+        error = tenant.create_only(args.tenant_context,
+                                   args.tenant,
+                                   args.tenant_kubeconfig,
+                                   args.tenant_internal_url)
+        if error:
+            logger.log_error(error)
+            return
 
-        worker.create_namespaced_kubeconfig_secret(kcfg, args.tenant)
+        # get a cluster environment
+        cluster_environment = options.get_cluster_environment(
+            args.cluster_environment, tenant)
 
-        namespace.check()
+        # just want the cluster environment objects,
+        # cluster should already be joined.
+        error = cluster_environment.create_only(args.cluster_environment,
+                                                args.context,
+                                                args.kubeconfig)
+
+        if error:
+            logger.log_error(error)
+            return
+
+        # create the primaza identity and get a kubeconfig with
+        # details required to communicate with the identity
+        main_user = tenant.main.create_primaza_identity(
+            cluster_environment.name)
+        kcfg = tenant.main.get_kubeconfig(main_user)
+
+        # create the agent
+        agent = cluster_environment.get_agent(args.namespace, type)
+        error = agent.create(args.config, args.version)
+        if error:
+            logger.log_info(f"Create of {agent.type} namespace "
+                            f"{agent.name} failed: {error}")
+            return
+
+        # add a secret to cluster environment to enable
+        # communication with the tenant.
+        cluster_environment.worker.create_namespaced_kubeconfig_secret(
+            kcfg, tenant.tenant)
 
         if settings.output_active():
             settings.output()
         elif settings.dry_run_active():
-            print(f"dry run create {type} namespace "
-                  f"{args.namespace} completed.")
+            print(f"Dry run create {type} namespace "
+                  f"{args.namespace} successfully completed.")
         else:
-            print(f"{type} namespace {args.namespace} "
-                  f"was successfully created")
+            # check agent was created correctly.
+            agent.agent.check()
+            print(f"Create {type} namespace {args.namespace} "
+                  f"successfully completed")
 
     except Exception as e:
-        print(traceback.format_exc())
+        if args.verbose:
+            print(traceback.format_exc())
         print(f"\nAn exception creating an {type} namespace",
               file=sys.stderr)
         raise e

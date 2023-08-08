@@ -1,17 +1,22 @@
 import inspect
 import os
 from primazactl.version import __version__, __primaza_version__
-from .settings import get_dry_run
 
 verbose = False
 first_log = True
+dry_run: str = ""
+
+
+def set_dry_run(dry_run_text):
+    global dry_run
+    dry_run = dry_run_text
 
 
 def log_info(message, always=False):
     if always:
-        print(f"[INFO]{get_dry_run()}{message}")
+        print(f"[INFO]{dry_run}{message}")
     elif verbose:
-        __write_log(f"[INFO]{get_dry_run()}", message)
+        __write_log(f"[INFO]{dry_run}", message)
 
 
 def log_entry(message="Just entering"):
@@ -26,15 +31,15 @@ def log_exit(message="Just exiting"):
 
 def log_warning(message):
     if verbose:
-        __write_log(f"[WARNING]{get_dry_run()}", message)
+        __write_log(f"[WARNING]{dry_run}", message)
 
 
 def log_error(message, always=True):
 
     if always:
-        print(f"[ERROR]{get_dry_run()}{message}")
+        print(f"[ERROR]{dry_run}{message}")
     elif verbose:
-        __write_log(f"[ERROR]{get_dry_run()}", message)
+        __write_log(f"[ERROR]{dry_run}", message)
 
 
 def set_verbose(value):

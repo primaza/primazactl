@@ -1,0 +1,21 @@
+apiVersion: primaza.io/v1alpha1
+kind: Tenant
+manifestDirectory: ./out/config
+name: primaza-alice
+version: latest
+controlPlane:
+  context: kind-primazactl-tenant-test
+  internalUrl: null
+  kubeconfig: ~/.kube/config
+clusterEnvironments:
+- name: worker-alice
+  environment: test
+  targetCluster:
+    context: kind-primazactl-join-test
+    internalUrl: https://172.18.0.3:6443
+    kubeconfig: ~/.kube/config
+  serviceNamespaces:
+    - name: alice-svc
+  applicationNamespaces:
+    - name: alice-app
+

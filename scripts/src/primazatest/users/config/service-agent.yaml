@@ -51,6 +51,18 @@ rules:
       - patch
       - delete
   - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - pods/status
+    verbs:
+      - get
+  - apiGroups:
       - rbac.authorization.k8s.io
     resources:
       - roles
