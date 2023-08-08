@@ -8,7 +8,7 @@ from primazactl.types import \
 from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.version import __primaza_version__
 from primazactl.utils import settings
-from primazactl.cmd.options.options import Options
+from primazactl.cmd.apply.options import Options
 from primazactl.utils import logger
 
 

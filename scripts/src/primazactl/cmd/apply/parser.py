@@ -9,15 +9,15 @@ from .options import Options
 
 def add_group(subparsers, parents=[]):
     run_options_parser = subparsers.add_parser(
-        name="options",
-        help="Run from an options file",
+        name="apply",
+        help="Apply an an options file",
         parents=parents)
     run_options_parser.set_defaults(func=run_options)
-    add_args_options(run_options_parser)
+    add_args_apply(run_options_parser)
     return run_options_parser
 
 
-def add_args_options(parser: argparse.ArgumentParser):
+def add_args_apply(parser: argparse.ArgumentParser):
     parser.add_argument(
         "-p", "--options",
         dest="options_file",

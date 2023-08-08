@@ -2,7 +2,7 @@ import argparse
 import sys
 from primazactl.cmd.create.parser import add_group as create_add_group
 from primazactl.cmd.join.parser import add_group as join_add_group
-from primazactl.cmd.options.parser import add_group as options_add_group
+from primazactl.cmd.apply.parser import add_group as apply_add_group
 from primazactl.version import __version__
 
 
@@ -41,6 +41,6 @@ def build_parser() -> argparse.ArgumentParser:
     # delete_add_group(subparsers, parents=[base_subparser])
 
     join_add_group(subparsers, parents=[base_subparser])
-    options_add_group(subparsers, parents=[base_subparser])
+    apply_add_group(subparsers, parents=[base_subparser])
 
     return parser

@@ -17,10 +17,10 @@
     - [create service-namespace](#create-service-namespace-command)
         - [Help](#create-service-namespace-help)
         - [Options](#create-service-namespace-options)
-   - [Options](#options-command)
+   - [Apply](#apply-command)
        - [Options file format](#options-file-format) 
-       - [Help](#options-help)
-       - [options](#options-options)
+       - [Help](#apply-help)
+       - [options](#apply-options)
  - [Testing](#testing) 
 
 
@@ -33,7 +33,7 @@ The current implementation provides:
 - [Join cluster](#join-cluster-command).
 - [Create service-namespace](#create-service-namespace-command).
 - [Create application-namespace](#create-application-namespace-command).
-- [Options](#options)
+- [Apply](#apply-command)
 
 For information about primaza see: [Primaza readme](https://github.com/primaza/primaza#readme)
 
@@ -123,11 +123,11 @@ Primazactl help is organized in a hierarchy with contextual help available for d
         - enables primaza tenant to access the namespace
     - creates two service accounts for the service-namespace to access kubernetes resources based on two different roles.
     - provides join cluster service account with access to the namespace
-- Options.
+- Apply.
    - combines each of the four other commands into a single command.
    - reads required values from a specified options file.
    - processes everything defined in the file. If all are specified:
-        - creates a tenant, joins cluster, createsg application and service namespaces.
+        - creates a tenant, joins cluster, creates application and service namespaces.
 
 ## Create tenant command
 
@@ -508,7 +508,7 @@ options:
         - Use in conjunction with `--output--` to get output without creating resources.
     - Default: none - resources are persisted.
 
-## Options command
+## Apply command
 
 ### Options file format
 The options file define a tenant, one or more cluster environments each with one or more application and/or service namespaces. It can include all of the information required by primazactl to install from the content.
@@ -535,9 +535,9 @@ clusterEnvironments:
   - name: alice-svc
 ```
 
-### Options help
+### Apply help
 ```
-usage: primazactl options [-h] [-x] -p OPTIONS_FILE [-y {client,server,none}] [-o {yaml,none}]
+usage: primazactl apply [-h] [-x] -p OPTIONS_FILE [-y {client,server,none}] [-o {yaml,none}]
 
 options:
   -h, --help            show this help message and exit
@@ -550,7 +550,7 @@ options:
                         Set to get output of resources which are created (default: none).
 ```
 
-### Options options
+### Apply options
 - `--options`
     - An options with values for creating primaza resources.
     - The entire contents will be processed.
@@ -600,7 +600,7 @@ options:
     - run the test:  `out/venv3/bin/primazatest -o`
         - src script is `scripts/src/primazatest/runtest.sh`
         - requires inputs: python virtual environment directory, the primaza configuration file and the cluster names.
-- To run the test for an options file run "make test-options"
+- To run the test for the apply command file run "make test-apply"
   - This will:
     - run `make setup-test`
     - run the test:  `out/venv3/bin/primazatest -t`

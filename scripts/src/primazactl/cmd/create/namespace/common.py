@@ -11,7 +11,7 @@ from primazactl.version import __primaza_version__
 from .constants import SERVICE, APPLICATION
 from primazactl.utils import settings
 from primazactl.utils import logger
-from primazactl.cmd.options.options import Options
+from primazactl.cmd.apply.options import Options
 
 
 def add_args_namespace(parser: argparse.ArgumentParser, type):

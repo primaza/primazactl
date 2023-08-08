@@ -225,8 +225,8 @@ test-dry-run: setup-test
 test-output: setup-test
 	$(PYTHON_VENV_DIR)/bin/primazatest -o -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
 
-.PHONY: test-options
-test-options: setup-test
+.PHONY: test-apply
+test-apply: setup-test
 	$(PYTHON_VENV_DIR)/bin/primazatest -t $(OPTIONS_FILE) -p $(PYTHON_VENV_DIR)
 
 .PHONY: create-users

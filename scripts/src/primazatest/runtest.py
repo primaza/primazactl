@@ -102,8 +102,8 @@ def test_args(command_args):
                                       None, fail_msg)
 
     args = ["drink"]
-    expect_error_msg = "error: argument {create,join,options}: " \
-        "invalid choice: 'drink' (choose from 'create', 'join', 'options')"
+    expect_error_msg = "error: argument {create,join,apply}: " \
+        "invalid choice: 'drink' (choose from 'create', 'join', 'apply')"
     fail_msg = "unexpected response invalid action"
     outcome = outcome & run_and_check(venv_dir, args, None,
                                       expect_error_msg, fail_msg)
@@ -666,7 +666,7 @@ def test_dry_run_with_options(command_args):
     app_namespace = cluster_options["applicationNamespaces"][0]["name"]
     svc_namespace = cluster_options["serviceNamespaces"][0]["name"]
 
-    command = [f"{command_args.venv_dir}/bin/primazactl", "options",
+    command = [f"{command_args.venv_dir}/bin/primazactl", "apply",
                "-p", command_args.options_file,
                "-y", "server"]
     resp, err = run_cmd(command)
@@ -871,7 +871,7 @@ def check_output(manifest_file, resp):
     return outcome
 
 
-def test_options(command_args):
+def test_apply(command_args):
 
     options_yaml = update_options_file(command_args.options_file)
     tenant = options_yaml["name"]
@@ -880,7 +880,7 @@ def test_options(command_args):
     app_namespace = cluster_options["applicationNamespaces"][0]["name"]
     svc_namespace = cluster_options["serviceNamespaces"][0]["name"]
 
-    command = [f"{command_args.venv_dir}/bin/primazactl", "options",
+    command = [f"{command_args.venv_dir}/bin/primazactl", "apply",
                "-p", command_args.options_file]
     out, err = run_cmd(command)
 
@@ -889,35 +889,35 @@ def test_options(command_args):
         print(f"[{FAIL}] Unexpected error response: {err}")
         install_all_outcome = False
     elif out:
-        if not check_options_out(out, f"Create primaza tenant {tenant} "
-                                      f"successfully completed"):
+        if not check_apply_out(out, f"Create primaza tenant {tenant} "
+                                    f"successfully completed"):
             install_all_outcome = False
-        elif not check_options_out(out, "Join cluster "
-                                        f"{cluster_env} "
-                                        "successfully completed"):
+        elif not check_apply_out(out, "Join cluster "
+                                      f"{cluster_env} "
+                                      "successfully completed"):
             install_all_outcome = False
-        elif not check_options_out(out, "Create application namespace "
-                                        f"{app_namespace} "
-                                        "successfully completed"):
+        elif not check_apply_out(out, "Create application namespace "
+                                      f"{app_namespace} "
+                                      "successfully completed"):
             install_all_outcome = False
-        elif not check_options_out(out, "Create service namespace "
-                                        f"{svc_namespace} "
-                                        "successfully completed"):
+        elif not check_apply_out(out, "Create service namespace "
+                                      f"{svc_namespace} "
+                                      "successfully completed"):
             install_all_outcome = False
-        elif not check_options_out(out, "Primaza install from options "
-                                        "file complete"):
+        elif not check_apply_out(out, "Primaza install from options "
+                                      "file complete"):
             install_all_outcome = False
         else:
-            print(f"[{PASS}] install from options file "
+            print(f"[{PASS}] apply options file "
                   f"{command_args.options_file} passed")
     else:
-        print(f"[{FAIL}] install from options file "
+        print(f"[{FAIL}] apply options file "
               f"{command_args.options_file} did not produce any output")
 
     return install_all_outcome
 
 
-def check_options_out(out, expect_out):
+def check_apply_out(out, expect_out):
     if expect_out not in out:
         print(f"[{FAIL}] Unexpected response: {out}. "
               f"Expected to contain {expect_out}")
@@ -1000,7 +1000,7 @@ def main():
                         dest="options_file",
                         required=False,
                         type=str,
-                        help="Set to options file to run options test")
+                        help="Set to options file to run apply test")
     parser.add_argument("-i", "--input_dir",
                         dest="input_dir",
                         help="directory for kubeconfigs used for user tests",
@@ -1023,7 +1023,7 @@ def main():
     elif args.test_user:
         outcome = test_with_user(args)
     elif args.options_file:
-        outcome = test_options(args)
+        outcome = test_apply(args)
     else:
         outcome = test_args(args)
         outcome = outcome & test_create(args)

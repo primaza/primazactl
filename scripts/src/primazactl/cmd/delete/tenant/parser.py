@@ -4,7 +4,7 @@ import sys
 from .common import add_shared_args
 from primazactl.primazamain.constants import DEFAULT_TENANT
 from primazactl.types import kubernetes_name
-from primazactl.cmd.options.options import Options
+from primazactl.cmd.apply.options import Options
 
 
 def add_delete_tenant(parser: argparse.ArgumentParser, parents=[]):
