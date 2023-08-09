@@ -216,7 +216,8 @@ def get_cluster_internal_url(cluster_name: str) -> str:
 
 
 def test_worker_install(venv_dir, config, version, worker_cluster,
-                        main_cluster, tenant, kubeconfig=None,
+                        main_cluster, tenant, service_account_namespace=None,
+                        kubeconfig=None,
                         main_kubeconfig=None, expect_out=False,
                         dry_run=None, output=None):
 
@@ -257,6 +258,9 @@ def test_worker_install(venv_dir, config, version, worker_cluster,
     if output:
         command.append("-o")
         command.append(output)
+    if service_account_namespace:
+        command.append("-j")
+        command.append(service_account_namespace)
 
     out, err = run_cmd(command)
 
@@ -279,6 +283,7 @@ def test_application_namespace_create(venv_dir, namespace,
                                       worker_cluster,
                                       main_cluster, tenant,
                                       config, version,
+                                      service_account_namespace=None,
                                       kubeconfig=None,
                                       main_kubeconfig=None,
                                       expect_out=False,
@@ -320,6 +325,9 @@ def test_application_namespace_create(venv_dir, namespace,
     if output:
         command.append("-o")
         command.append(output)
+    if service_account_namespace:
+        command.append("-j")
+        command.append(service_account_namespace)
 
     out, err = run_cmd(command)
     if out and expect_out:
@@ -342,7 +350,9 @@ def test_service_namespace_create(venv_dir, namespace,
                                   worker_cluster,
                                   main_cluster, tenant,
                                   config,
-                                  version, kubeconfig=None,
+                                  version,
+                                  service_account_namespace=None,
+                                  kubeconfig=None,
                                   main_kubeconfig=None,
                                   expect_out=False,
                                   dry_run=None,
@@ -383,6 +393,9 @@ def test_service_namespace_create(venv_dir, namespace,
     if output:
         command.append("-o")
         command.append(output)
+    if service_account_namespace:
+        command.append("-j")
+        command.append(service_account_namespace)
 
     out, err = run_cmd(command)
 
@@ -436,13 +449,16 @@ def test_with_user(command_args):
 
     bad_kubeconfig = os.path.join(configs_dir, "worker-bad-kube.config")
     expect_out = "User does not have permissions to create ServiceBinding"
-    bad_outcome, out = test_worker_install(command_args.venv_dir,
-                                           command_args.worker_config,
-                                           command_args.version,
-                                           command_args.worker_context,
-                                           command_args.main_context,
-                                           TENANT, bad_kubeconfig,
-                                           main_kubeconfig, True)
+    bad_outcome, out = test_worker_install(
+        command_args.venv_dir,
+        command_args.worker_config,
+        command_args.version,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.service_account_namespace,
+        bad_kubeconfig,
+        main_kubeconfig, True)
     if expect_out in out:
         print(f"[{PASS}] Output includes expected text: {expect_out}")
     else:
@@ -451,13 +467,16 @@ def test_with_user(command_args):
         bad_outcome = False
 
     worker_kubeconfig = os.path.join(configs_dir, "worker-kube.config")
-    good_outcome, _ = test_worker_install(command_args.venv_dir,
-                                          command_args.worker_config,
-                                          command_args.version,
-                                          command_args.worker_context,
-                                          command_args.main_context,
-                                          TENANT, worker_kubeconfig,
-                                          main_kubeconfig, False)
+    good_outcome, _ = test_worker_install(
+        command_args.venv_dir,
+        command_args.worker_config,
+        command_args.version,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.service_account_namespace,
+        worker_kubeconfig,
+        main_kubeconfig, False)
     outcome = outcome & bad_outcome & good_outcome
 
     bad_kubeconfig = os.path.join(configs_dir,
@@ -471,6 +490,7 @@ def test_with_user(command_args):
         TENANT,
         command_args.app_config,
         command_args.version,
+        command_args.service_account_namespace,
         bad_kubeconfig,
         main_kubeconfig,
         True)
@@ -492,6 +512,7 @@ def test_with_user(command_args):
         TENANT,
         command_args.app_config,
         command_args.version,
+        command_args.service_account_namespace,
         app_kubeconfig,
         main_kubeconfig, False)
     outcome = outcome & bad_outcome & good_outcome
@@ -507,6 +528,7 @@ def test_with_user(command_args):
         TENANT,
         command_args.app_config,
         command_args.version,
+        command_args.service_account_namespace,
         bad_kubeconfig,
         main_kubeconfig,
         True)
@@ -527,6 +549,7 @@ def test_with_user(command_args):
         TENANT,
         command_args.app_config,
         command_args.version,
+        command_args.service_account_namespace,
         svc_kubeconfig,
         main_kubeconfig,
         True)
@@ -543,12 +566,20 @@ def test_create(command_args):
                                    command_args.version,
                                    command_args.main_context,
                                    TENANT)
-    worker_outcome, _ = test_worker_install(command_args.venv_dir,
-                                            command_args.worker_config,
-                                            command_args.version,
-                                            command_args.worker_context,
-                                            command_args.main_context,
-                                            TENANT)
+    if(command_args.service_account_namespace and
+       command_args.service_account_namespace != "kube-system"):
+        run_cmd(["kubectl", "create", "namespace",
+                command_args.service_account_namespace,
+                "--context", command_args.worker_context])
+
+    worker_outcome, _ = test_worker_install(
+        command_args.venv_dir,
+        command_args.worker_config,
+        command_args.version,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.service_account_namespace)
     outcome = outcome & worker_outcome
     app_outcome, _ = test_application_namespace_create(
         command_args.venv_dir,
@@ -557,7 +588,8 @@ def test_create(command_args):
         command_args.main_context,
         TENANT,
         command_args.app_config,
-        command_args.version)
+        command_args.version,
+        command_args.service_account_namespace,)
     outcome = outcome & app_outcome
 
     svc_outcome, _ = test_service_namespace_create(
@@ -567,7 +599,8 @@ def test_create(command_args):
         command_args.main_context,
         TENANT,
         command_args.service_config,
-        command_args.version)
+        command_args.version,
+        command_args.service_account_namespace,)
 
     return outcome & svc_outcome
 
@@ -592,13 +625,16 @@ def test_dry_run(command_args, dry_run_type):
         print(f"[{FAIL}] {dry_run_type} dry run tenant {TENANT} "
               f"install test failed.")
 
-    _, worker_resp = test_worker_install(command_args.venv_dir,
-                                         command_args.worker_config,
-                                         command_args.version,
-                                         command_args.worker_context,
-                                         command_args.main_context,
-                                         TENANT, None, None,
-                                         True, dry_run_type, None)
+    _, worker_resp = test_worker_install(
+        command_args.venv_dir,
+        command_args.worker_config,
+        command_args.version,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT,
+        command_args.service_account_namespace,
+        None, None,
+        True, dry_run_type, None)
 
     worker_outcome = check_dry_run(dry_run_type,
                                    command_args.worker_config,
@@ -618,6 +654,7 @@ def test_dry_run(command_args, dry_run_type):
         TENANT,
         command_args.app_config,
         command_args.version,
+        command_args.service_account_namespace,
         None, None, True, dry_run_type, None)
 
     app_outcome = check_dry_run(dry_run_type,
@@ -640,6 +677,7 @@ def test_dry_run(command_args, dry_run_type):
         TENANT,
         command_args.service_config,
         command_args.version,
+        command_args.service_account_namespace,
         None, None, True, dry_run_type, None)
 
     service_outcome = check_dry_run(dry_run_type,
@@ -789,14 +827,16 @@ def test_output(command_args, dry_run_type=None):
         print(f"[{FAIL}] output yaml tenant install test failed. "
               f"dry-run={dry_run_type}")
 
-    _, worker_resp = test_worker_install(command_args.venv_dir,
-                                         command_args.worker_config,
-                                         command_args.version,
-                                         command_args.worker_context,
-                                         command_args.main_context,
-                                         TENANT_FOR_OUTPUT,
-                                         None, None, True,
-                                         dry_run_type, "yaml")
+    _, worker_resp = test_worker_install(
+        command_args.venv_dir,
+        command_args.worker_config,
+        command_args.version,
+        command_args.worker_context,
+        command_args.main_context,
+        TENANT_FOR_OUTPUT,
+        command_args.service_account_namespace,
+        None, None, True,
+        dry_run_type, "yaml")
 
     worker_outcome = check_output(command_args.worker_config, worker_resp)
     if worker_outcome:
@@ -814,6 +854,7 @@ def test_output(command_args, dry_run_type=None):
         TENANT_FOR_OUTPUT,
         command_args.app_config,
         command_args.version,
+        command_args.service_account_namespace,
         None, None, True, dry_run_type, "yaml")
 
     app_outcome = check_output(command_args.app_config, app_resp)
@@ -832,6 +873,7 @@ def test_output(command_args, dry_run_type=None):
         TENANT_FOR_OUTPUT,
         command_args.service_config,
         command_args.version,
+        command_args.service_account_namespace,
         None, None, True, dry_run_type, "yaml")
 
     service_outcome = check_output(command_args.service_config, service_resp)
@@ -876,9 +918,15 @@ def test_apply(command_args):
     options_yaml = update_options_file(command_args.options_file)
     tenant = options_yaml["name"]
     cluster_options = options_yaml["clusterEnvironments"][0]
+    sa_n = cluster_options.get("serviceAccountNamespace", None)
     cluster_env = cluster_options["name"]
     app_namespace = cluster_options["applicationNamespaces"][0]["name"]
     svc_namespace = cluster_options["serviceNamespaces"][0]["name"]
+
+    if(sa_n and sa_n != "kube-system"):
+        run_cmd(["kubectl", "create", "namespace",
+                sa_n, "--context",
+                cluster_options["targetCluster"]["context"]])
 
     command = [f"{command_args.venv_dir}/bin/primazactl", "apply",
                "-p", command_args.options_file]
@@ -1005,10 +1053,13 @@ def main():
                         dest="input_dir",
                         help="directory for kubeconfigs used for user tests",
                         required=False)
-    parser.add_argument("-j", "--sa_namespace",
-                        dest="sa_namespace",
-                        help="directory for kubeconfigs used for user tests",
-                        required=False)
+    parser.add_argument("-j", "--service-account-namespace",
+                        dest="service_account_namespace",
+                        required=False,
+                        type=str,
+                        help="namespace used for hosting the service account"
+                             "shared with"
+                             "Primaza's Control Plane(existing namespace).")
 
     args = parser.parse_args()
 

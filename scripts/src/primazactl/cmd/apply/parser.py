@@ -85,7 +85,7 @@ def run_options(args):
         for cluster_environment in options.get_cluster_environments(tenant):
 
             # join cluster with no additional command line arguments.
-            error = cluster_environment.join(None, None, None,
+            error = cluster_environment.join(None, None, None, None,
                                              None, None, None, None)
             if error:
                 logger.log_error(error)

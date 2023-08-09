@@ -12,6 +12,7 @@ from .constants import SERVICE, APPLICATION
 from primazactl.utils import settings
 from primazactl.utils import logger
 from primazactl.cmd.apply.options import Options
+from primazactl.primazaworker.constants import WORKER_NAMESPACE
 
 
 def add_args_namespace(parser: argparse.ArgumentParser, type):
@@ -70,6 +71,16 @@ def add_args_namespace(parser: argparse.ArgumentParser, type):
         required=False,
         help="Internal URL for the cluster \
                 on which Primaza's Control Plane is running",
+        default=None)
+
+    parser.add_argument(
+        "-j", "--service-account-namespace",
+        dest="service_account_namespace",
+        required=False,
+        help=f"namespace used for hosting the service account shared with\
+             Primaza's Control Plane. The namespace should be already\
+             existing. Default: {WORKER_NAMESPACE}.",
+        type=kubernetes_name,
         default=None)
 
     parser.add_argument(
@@ -155,9 +166,11 @@ def __create_namespace(args, type):
 
         # just want the cluster environment objects,
         # cluster should already be joined.
-        error = cluster_environment.create_only(args.cluster_environment,
-                                                args.context,
-                                                args.kubeconfig)
+        error = cluster_environment.create_only(
+            args.cluster_environment,
+            args.context,
+            args.kubeconfig,
+            args.service_account_namespace)
 
         if error:
             logger.log_error(error)

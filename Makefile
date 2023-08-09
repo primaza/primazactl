@@ -85,6 +85,7 @@ $(PRIMAZA_CONFIG_DIR):
 
 APPLICATION_NAMESPACE ?= primaza-application
 SERVICE_NAMESPACE ?= primaza-service
+SERVICE_ACCOUNT_NAMESPACE ?= worker-sa
 
 PRIMAZA_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/primaza_config_$(VERSION).yaml
 WORKER_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/worker_config_$(VERSION).yaml
@@ -203,7 +204,7 @@ lint: primazactl ## Check python code
 
 .PHONY: test-local
 test-local: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE) -j $(SERVICE_ACCOUNT_NAMESPACE)
 
 .PHONY: test-released
 test-released:
@@ -227,7 +228,7 @@ test-output: setup-test
 
 .PHONY: test-apply
 test-apply: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -t $(OPTIONS_FILE) -p $(PYTHON_VENV_DIR)
+	$(PYTHON_VENV_DIR)/bin/primazatest -t $(OPTIONS_FILE) -p $(PYTHON_VENV_DIR) 
 
 .PHONY: create-users
 create-users: primazactl
@@ -240,7 +241,6 @@ create-users: primazactl
 	$(PYTHON_VENV_DIR)/bin/primazauser application-agent-bad -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
 	$(PYTHON_VENV_DIR)/bin/primazauser service-agent -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
 	$(PYTHON_VENV_DIR)/bin/primazauser service-agent-bad -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -o $(OUTPUT_DIR)/users
-
 
 .PHONY: test
 test: setup-test test-local test-released

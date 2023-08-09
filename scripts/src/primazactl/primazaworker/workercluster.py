@@ -1,4 +1,3 @@
-from .constants import WORKER_NAMESPACE
 from primazactl.primazamain.maincluster import MainCluster
 from primazactl.primaza.primazacluster import PrimazaCluster
 from primazactl.kubectl.constants import WORKER_CONFIG
@@ -29,10 +28,11 @@ class WorkerCluster(PrimazaCluster):
             cluster_environment: str,
             tenant: str,
             internal_url: str | None = None,
+            service_account_namespace: str | None = None,
             ):
 
         sa_name, _ = names.get_identity_names(tenant, cluster_environment)
-        super().__init__(WORKER_NAMESPACE,
+        super().__init__(service_account_namespace,
                          context,
                          sa_name,
                          cluster_environment,
@@ -45,7 +45,7 @@ class WorkerCluster(PrimazaCluster):
         self.primaza_main = primaza_main
         self.environment = environment
         self.version = version
-        self.manifest = Manifest(WORKER_NAMESPACE, config_file,
+        self.manifest = Manifest(service_account_namespace, config_file,
                                  version, WORKER_CONFIG)
 
         kcw = KubeConfigWrapper(context, self.kube_config_file)
