@@ -10,6 +10,7 @@ controlPlane:
 clusterEnvironments:
 - name: worker-alice
   environment: test
+  serviceAccountNamespace: worker-sa
   targetCluster:
     context: kind-primazactl-join-test
     internalUrl: https://172.18.0.3:6443
@@ -18,4 +19,3 @@ clusterEnvironments:
     - name: alice-svc
   applicationNamespaces:
     - name: alice-app
-

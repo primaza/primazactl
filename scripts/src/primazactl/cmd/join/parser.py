@@ -10,6 +10,7 @@ from primazactl.version import __primaza_version__
 from primazactl.utils import settings
 from primazactl.cmd.apply.options import Options
 from primazactl.utils import logger
+from primazactl.primazaworker.constants import WORKER_NAMESPACE
 
 
 def add_group(parser: argparse.ArgumentParser, parents=[]):
@@ -84,6 +85,16 @@ def add_args_join(parser: argparse.ArgumentParser):
         help="the url used by Primaza's Control Plane to \
                    reach the joined cluster",
         type=str,
+        default=None)
+
+    parser.add_argument(
+        "-j", "--service-account-namespace",
+        dest="service_account_namespace",
+        required=False,
+        help=f"namespace used for hosting the service account shared with\
+             Primaza's Control Plane. The namespace should be already\
+             existing. Default: {WORKER_NAMESPACE}.",
+        type=kubernetes_name,
         default=None)
 
     # main
@@ -195,7 +206,8 @@ def join_cluster(args):
                                          args.environment,
                                          args.config,
                                          args.version,
-                                         args.internal_url)
+                                         args.internal_url,
+                                         args.service_account_namespace)
 
         if error:
             logger.log_error(f"Join cluster {cluster_environment.name} "

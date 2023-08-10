@@ -207,15 +207,14 @@ options:
 ## Join cluster command
 
 Notes:
-- requires a primaza tenant.
-- the namespace created is named `kube-system`.
-  - Not currently supported to use a different name.
+- Requires a primaza tenant.
+- It allows any namespace to be used, the namespace should already be created before using this. The default namespace used is named `kube-system`.
 
 
 ### Join cluster help
 ```
 usage: primazactl join cluster [-h] [-x] [-f CONFIG] [-v VERSION] [-p OPTIONS_FILE] [-c CONTEXT] [-k KUBECONFIG] [-u INTERNAL_URL] -d CLUSTER_ENVIRONMENT
-                               [-e ENVIRONMENT] [-l TENANT_KUBECONFIG] [-m TENANT_CONTEXT] [-t TENANT] [-y {client,server,none}] [-o {yaml,none}]
+                               [-e ENVIRONMENT] [-l TENANT_KUBECONFIG] [-m TENANT_CONTEXT] [-t TENANT] [-y {client,server,none}] [-o {yaml,none}] [-j SERVICE_ACCOUNT_NAMESPACE]
 
 options:
   -h, --help            show this help message and exit
@@ -247,6 +246,9 @@ options:
                         Set for dry run (default: none)
   -o {yaml,none}, --output {yaml,none}
                         Set to get output of resources which are created (default: none).
+  -j SERVICE_ACCOUNT_NAMESPACE, --service-account-namespace SERVICE_ACCOUNT_NAMESPACE
+                        name to be used for the WorkerNamespace which already exists.
+                        Default: kube-system
 ```
 
 ### Join cluster options
@@ -307,6 +309,9 @@ options:
         - No output produced.
         - Use in conjunction with `--output--` to get output without creating resources.
     - Default: none - resources are persisted.
+- `--service-account-namespace SERVICE_ACCOUNT_NAMESPACE`
+    - name to be used for the WorkerNamespace that will be created.
+    - Default is `kube-system`
 
 
 ## Create application namespace command

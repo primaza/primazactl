@@ -20,6 +20,7 @@ class ClusterEnvironment(object):
     tenant: Tenant = None
     worker: WorkerCluster = None
     internal_url: str = None
+    service_account_namespace: str = None
 
     def __init__(self, options, tenant):
 
@@ -47,13 +48,22 @@ class ClusterEnvironment(object):
         self.version = tenant.version if tenant.version \
             else defaults["version"]
 
+        self.service_account_namespace = \
+            options.get("serviceAccountNamespace", None)
+        if not self.service_account_namespace:
+            self.service_account_namespace = \
+                defaults["service_account_namespace"]
+        logger.log_info(f"service_account_namespace: \
+            {self.service_account_namespace}")
+
         logger.log_info(f"Cluster Environment created: {self.name}")
 
     def join(self, name, context, kubeconfig, environment,
-             manifest, version, internal_url):
+             manifest, version, internal_url, service_account_namespace):
 
         self.add_args(name, context, kubeconfig, environment,
-                      manifest, version, internal_url)
+                      manifest, version, internal_url,
+                      service_account_namespace)
 
         logger.log_info(self.name)
 
@@ -71,14 +81,16 @@ class ClusterEnvironment(object):
                     environment=self.environment,
                     cluster_environment=self.name,
                     tenant=self.tenant.tenant,
-                    internal_url=self.internal_url
-                )
+                    internal_url=self.internal_url,
+                    service_account_namespace=self.service_account_namespace)
             self.worker.install_worker()
             return ""
 
-    def create_only(self, name, context, kubeconfig):
+    def create_only(self, name, context, kubeconfig,
+                    service_account_namespace):
 
-        self.add_args(name, context, kubeconfig, None, None, None, None)
+        self.add_args(name, context, kubeconfig, None, None, None, None,
+                      service_account_namespace)
         if not self.name:
             return "Namespace create requires a cluster environment name."
         else:
@@ -92,10 +104,11 @@ class ClusterEnvironment(object):
                 cluster_environment=self.name,
                 tenant=self.tenant.tenant,
                 internal_url=None,
+                service_account_namespace=self.service_account_namespace,
             )
 
     def add_args(self, name, context, kubeconfig, environment,
-                 manifest, version, internal_url):
+                 manifest, version, internal_url, service_account_namespace):
 
         if name:
             self.name = name
@@ -117,6 +130,9 @@ class ClusterEnvironment(object):
 
         if internal_url:
             self.internal_url = internal_url
+
+        if service_account_namespace:
+            self.service_account_namespace = service_account_namespace
 
     def get_agents(self,  type):
         agents = []
