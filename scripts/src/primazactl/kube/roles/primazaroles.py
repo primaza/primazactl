@@ -52,6 +52,10 @@ def get_primaza_namespace_role(role_name: str,
                 resources=["configmaps"],
                 verbs=["get", "list", "update", "delete"],
                 resource_names=["primaza-agentapp-config"]),
+            client.V1PolicyRule(
+                api_groups=["primaza.io"],
+                resources=["serviceclaims/status"],
+                verbs=["get", "update"]),
             # pull synchronization strategy
             client.V1PolicyRule(
                 api_groups=["primaza.io"],
