@@ -66,8 +66,7 @@ class CustomNamespaced(object):
                     raise e
         else:
             logger.log_info(f'UNCHANGED: {self.body["kind"]} '
-                            f'{self.body["metadata"]["name"]} '
-                            'already exists',
+                            f'{self.body["metadata"]["name"]} already exists',
                             settings.dry_run_active())
 
     def read(self) -> client.V1Namespace | None:

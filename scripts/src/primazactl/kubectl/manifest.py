@@ -5,7 +5,7 @@ from primazactl.utils import logger, settings
 from github import Auth, Github
 import semver
 import requests
-from.constants import REPOSITORY
+from.constants import get_repository
 from.apply import apply_manifest
 
 
@@ -18,9 +18,12 @@ class Manifest(object):
 
     def __init__(self, namespace: str, path: str,
                  version: str = None, type: str = None):
+        logger.log_entry(f"namespace: {namespace}, path: {path}, "
+                         f"version: {version}, type: {type}")
         self.path = path
         self.namespace = namespace
-        self.version = version
+        if version:
+            self.version = version[1:] if version.startswith("v") else version
         self.type = type
 
     def replace_ns(self, body):
@@ -55,13 +58,10 @@ class Manifest(object):
         logger.log_entry(f"path: {self.path}, version: {self.version}, "
                          f"type: {self.type}")
         if self.path:
-            with open(self.path, 'r') as manifest:
-                self.body = yaml.safe_load_all(manifest)
-                self.update_namespace()
+            return yaml.safe_load_all(open(self.path, 'r'))
         else:
             manifest = self.__set_config_content()
-            self.body = yaml.safe_load_all(manifest)
-            self.update_namespace()
+            return yaml.safe_load_all(manifest)
 
     def apply(self, api_client: client, action: str = "create"):
         logger.log_entry(f"action: {action}")
@@ -101,35 +101,45 @@ class Manifest(object):
         logger.log_entry()
 
         g = self.build_github_client()
-        repo = g.get_repo(REPOSITORY)
+        repo = g.get_repo(get_repository())
 
         releases = repo.get_releases()
         latest_release = None
+        latest_version = None
 
         for release in releases:
             logger.log_info(f"release found - name: {release.id}")
             logger.log_info(f"                tag: {release.tag_name}")
 
-            if self.version == "latest":
-                if release.tag_name == "latest":
-                    return self.__get_config_content(release)
-
-            elif semver.VersionInfo.isvalid(release.tag_name):
-                if self.version and \
-                        semver.compare(self.version, release.tag_name) == 0:
-                    logger.log_info(f"match found: {release.tag_name}")
-                    return self.__get_config_content(release)
-                elif not latest_release or \
-                        semver.compare(release.tag_name,
-                                       latest_release.tag_name) > 1:
-                    logger.log_info(f"later match found: {release.tag_name}")
-                    latest_release = release
+            if self.version == "latest" and release.tag_name == "latest":
+                return self.__get_config_content(release)
+            elif self.version == "nightly" and release.tag_name == "nightly":
+                return self.__get_config_content(release)
+            elif self.version != "latest" and self.version != "nightly":
+                version = release.tag_name[1:] \
+                    if release.tag_name.startswith("v") \
+                    else release.tag_name
+                if semver.VersionInfo.isvalid(version):
+                    if self.version and \
+                            semver.compare(self.version, version) == 0:
+                        logger.log_info(f"match found: {release.tag_name}")
+                        return self.__get_config_content(release)
+                    elif not latest_version or \
+                            semver.compare(version,
+                                           latest_version) > 1:
+                        logger.log_info(f"later match found: "
+                                        f"{release.tag_name}")
+                        latest_version = version
+                        latest_release = release
+                else:
+                    logger.log_info(f"Ignore release tag {release.tag_name} "
+                                    f"- it is not a valid semver")
 
         if latest_release:
             return self.__get_config_content(latest_release)
 
         raise RuntimeError(f"A release was not found in repository "
-                           f"{REPOSITORY} for version {self.version}")
+                           f"{get_repository()} for version {self.version}")
 
     def __get_config_content(self, release):
         logger.log_entry(f"release = {release.tag_name}")
@@ -144,7 +154,7 @@ class Manifest(object):
                 return response.text.encode("utf-8")
 
         raise RuntimeError(f"Failed to get release asset {asset_name} "
-                           f"from {REPOSITORY} "
+                           f"from {get_repository()} "
                            f"for version {self.version}")
 
 
