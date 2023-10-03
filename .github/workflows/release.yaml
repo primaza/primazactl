@@ -10,6 +10,12 @@ on:
         description: "create a version for primazctl"
         required: true
         default: "latest"
+      organization:
+        description: "git organization from which to get the primaza release"
+        required: true
+        default: "primaza"
+  repository_dispatch:
+    types: [primazactl-release]
 
 permissions:
   contents: write
@@ -26,24 +32,31 @@ jobs:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "^1.20"
+
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set Version and Manifests
+      - name: Set Version and Draft release
         run: |
           # set version based on dispatch type
-          version="latest"
+          draft_release="true"
           if [[ "${{github.event_name}}" == "workflow_dispatch" ]]; then
             version=${{ github.event.inputs.version }}
+            draft_release="false"
+            echo "GIT_ORG=${{ github.event.inputs.organization }}" >> $GITHUB_ENV
           elif [[ "${{github.ref_type}}" == "tag" ]]; then
             version=${{ github.ref_name }}
+          elif [[ "${{github.event_name}}" == "repository_dispatch" ]]; then
+            version=${{ github.event.client_payload.version }}
+            draft_release="false"
+            echo "GIT_ORG=${{ github.event.client_payload.organization }}" >> $GITHUB_ENV
           fi
           echo "VERSION=$version" >> $GITHUB_ENV
-          echo "PRIMAZA_CTL_VERSION=$version" >> $GITHUB_ENV
-          echo "PRIMAZA_CONFIG_FILE=primaza_main_config_$version.yaml" >> $GITHUB_ENV
-          echo "WORKER_CONFIG_FILE=primaza_worker_config_$version.yaml" >> $GITHUB_ENV
-          echo "APPLICATION_AGENT_CONFIG_FILE=application_agent_config_$version.yaml" >> $GITHUB_ENV
-          echo "SERVICE_AGENT_CONFIG_FILE=service_agent_config_$version.yaml" >> $GITHUB_ENV
+          echo "DRAFT_RELEASE=$draft_release" >> $GITHUB_ENV
 
       - name: Test and make manifests
         id: test-and-manifests
@@ -55,14 +68,13 @@ jobs:
         run: make single-binary
 
       - name: Delete previous release and tag
-        if: ${{ env.VERSION == 'latest' }}
+        if: ${{ env.VERSION == 'latest' || env.VERSION == 'nightly' }}
         uses: dev-drprasad/delete-tag-and-release@v0.2.1
         with:
           delete_release: true # default: false
           tag_name: ${{ env.VERSION }} # tag name to delete
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Release for tag event
         if: ${{ github.ref_type == 'tag' }}
@@ -73,10 +85,6 @@ jobs:
           generate_release_notes: true
           files: |
             ./out/venv3/dist/primazactl
-            ${{ env.PRIMAZA_CONFIG_FILE }}
-            ${{ env.WORKER_CONFIG_FILE }}
-            ${{ env.APPLICATION_AGENT_CONFIG_FILE }}
-            ${{ env.SERVICE_AGENT_CONFIG_FILE }}
 
       - name: Release for non tag events
         if: ${{ github.ref_type != 'tag' }}
@@ -84,11 +92,7 @@ jobs:
         with:
           tag_name: ${{ env.VERSION }}
           body: "Release version ${{ env.VERSION }}"
-          draft: true
+          draft: ${{ env.DRAFT_RELEASE }}
           generate_release_notes: true
           files: |
             ./out/venv3/dist/primazactl
-            ${{ env.PRIMAZA_CONFIG_FILE }}
-            ${{ env.WORKER_CONFIG_FILE }}
-            ${{ env.APPLICATION_AGENT_CONFIG_FILE }}
-            ${{ env.SERVICE_AGENT_CONFIG_FILE }}

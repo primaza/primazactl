@@ -13,10 +13,11 @@ def existing_file(arg):
 
 
 def semvertag_or_latest(arg):
-    if arg != "latest" and not semver.VersionInfo.isvalid(arg):
-        raise ArgumentTypeError(
-            f"--version is not a valid semantic version: {arg}")
-
+    if arg != "latest" and arg != "nightly":
+        version = arg[1:] if arg.startswith("v") else arg
+        if not semver.VersionInfo.isvalid(version):
+            raise ArgumentTypeError(
+                f"--version is not a valid semantic version: {arg}")
     return arg
 
 

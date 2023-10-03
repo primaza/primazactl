@@ -11,11 +11,17 @@ PRIMAZA_CTL_VERSION ?= $(shell git describe --tags --always --abbrev=8 --dirty)
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
-IMG ?= ghcr.io/primaza/primaza:$(VERSION)
-IMG_APP ?= ghcr.io/primaza/primaza-agentapp:$(VERSION)
-IMG_SVC ?= ghcr.io/primaza/primaza-agentsvc:$(VERSION)
-IMG_APP_LOCAL ?= agentapp:$(VERSION)
-IMG_SVC_LOCAL ?= agentsvc:$(VERSION)
+# SET RUN_FROM to config the create config files or release to use a release
+RUN_FROM ?= config
+GIT_ORG ?= primaza
+IMG = ghcr.io/$(GIT_ORG)/primaza:$(VERSION)
+IMG_APP = ghcr.io/$(GIT_ORG)/primaza-agentapp:$(VERSION)
+IMG_SVC = ghcr.io/$(GIT_ORG)/primaza-agentsvc:$(VERSION)
+IMG_APP_LOCAL = agentapp:$(VERSION)
+IMG_SVC_LOCAL = agentsvc:$(VERSION)
+
+# set CLEAN to "clusters" to only refresh clusters
+CLEAN ?= all
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -87,10 +93,10 @@ APPLICATION_NAMESPACE ?= primaza-application
 SERVICE_NAMESPACE ?= primaza-service
 SERVICE_ACCOUNT_NAMESPACE ?= worker-sa
 
-PRIMAZA_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/primaza_config_$(VERSION).yaml
-WORKER_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/worker_config_$(VERSION).yaml
-APPLICATION_AGENT_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/application_agent_config_$(VERSION).yaml
-SERVICE_AGENT_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/service_agent_config_$(VERSION).yaml
+PRIMAZA_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/control_plane_config_$(VERSION).yaml
+WORKER_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/crds_config_$(VERSION).yaml
+APPLICATION_AGENT_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/application_namespace_config_$(VERSION).yaml
+SERVICE_AGENT_CONFIG_FILE ?= $(PRIMAZA_CONFIG_DIR)/service_namespace_config_$(VERSION).yaml
 
 KIND_CONFIG_DIR ?= $(SCRIPTS_DIR)/src/primazatest/config
 TENANT_KIND_CONFIG_FILE ?= $(KIND_CONFIG_DIR)/kind-main.yaml
@@ -150,7 +156,10 @@ image:
 	docker tag $(IMG_SVC) $(IMG_SVC_LOCAL)
 
 .PHONY: kind-clusters
-kind-clusters: config image
+kind-clusters: image
+ifeq ($(CLEAN),all)
+	$(MAKE) image
+endif
 	-kind delete cluster --name $(KIND_CLUSTER_TENANT_NAME)
 	-kind delete cluster --name $(KIND_CLUSTER_JOIN_NAME)
 	kind create cluster --config $(TENANT_KIND_CONFIG_FILE) --name $(KIND_CLUSTER_TENANT_NAME) && kubectl wait --for condition=Ready nodes --all --timeout=600s
@@ -164,7 +173,13 @@ kind-clusters: config image
 	kind load docker-image $(IMG_SVC_LOCAL) --name $(KIND_CLUSTER_JOIN_NAME)
 
 .PHONY: setup-test
-setup-test: clean image primazactl config kind-clusters
+setup-test: clean kind-clusters
+ifeq ($(CLEAN),all)
+	$(MAKE) primazactl
+endif
+ifeq ($(RUN_FROM),config)
+	$(MAKE) config
+endif
 
 .PHONY: clone
 clone: clean-temp
@@ -185,6 +200,8 @@ primazactl: ## Setup virtual environment
 
 .PHONY: single-binary
 single-binary: ## Release primazactl as single binary
+	echo '__version__ = "$(PRIMAZA_CTL_VERSION)"' > $(VERSION_FILE)
+	echo '__primaza_version__ = "$(VERSION)"' >> $(VERSION_FILE)
 	-rm -rf $(PYTHON_VENV_DIR)
 	python3 -m venv $(PYTHON_VENV_DIR)
 	$(PYTHON_VENV_DIR)/bin/pip3 install --upgrade pyinstaller
@@ -204,31 +221,55 @@ lint: primazactl ## Check python code
 
 .PHONY: test-local
 test-local: setup-test
+ifeq ($(RUN_FROM),config)
 	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE) -j $(SERVICE_ACCOUNT_NAMESPACE)
+else
+	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -j $(SERVICE_ACCOUNT_NAMESPACE) -v $(VERSION) -g $(GIT_ORG)
+endif
+
+.PHONY: test-version
+test-version: setup-test
+	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -v $(VERSION) -g $(GIT_ORG)
 
 .PHONY: test-released
 test-released:
 	make kind-clusters
-	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -v $(VERSION) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME)
+	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -v $(VERSION) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME)  -g $(GIT_ORG)
 
 .PHONY: test-users
 test-users: setup-test create-users
+ifeq ($(RUN_FROM),config)
 	$(PYTHON_VENV_DIR)/bin/primazatest -u -i $(OUTPUT_DIR)/users -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+else
+	$(PYTHON_VENV_DIR)/bin/primazatest -u -i $(OUTPUT_DIR)/users -p $(PYTHON_VENV_DIR) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -v $(VERSION) -g $(GIT_ORG)
+endif
 
 .PHONY: test-dry-run
 test-dry-run: setup-test
+ifeq ($(RUN_FROM),config)
 	$(PYTHON_VENV_DIR)/bin/primazatest -d -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE) -t $(OPTIONS_FILE)
+else
+	$(PYTHON_VENV_DIR)/bin/primazatest -d -p $(PYTHON_VENV_DIR) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -v $(VERSION) -t $(OPTIONS_FILE) -g $(GIT_ORG)
+endif
 
 .PHONY test-local-no-setup:
+ifeq ($(RUN_FROM),config)
 	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+else
+	$(PYTHON_VENV_DIR)/bin/primazatest -p $(PYTHON_VENV_DIR) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -v $(VERSION) -g $(GIT_ORG)
+endif
 
 .PHONY: test-output
 test-output: setup-test
+ifeq ($(RUN_FROM),config)
 	$(PYTHON_VENV_DIR)/bin/primazatest -o -p $(PYTHON_VENV_DIR) -e $(WORKER_CONFIG_FILE) -f $(PRIMAZA_CONFIG_FILE) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -a $(APPLICATION_AGENT_CONFIG_FILE) -s $(SERVICE_AGENT_CONFIG_FILE)
+else
+	$(PYTHON_VENV_DIR)/bin/primazatest -o -p $(PYTHON_VENV_DIR) -c $(KUBE_KIND_CLUSTER_JOIN_NAME) -m $(KUBE_KIND_CLUSTER_TENANT_NAME) -v $(VERSION) -g $(GIT_ORG)
+endif
 
 .PHONY: test-apply
 test-apply: setup-test
-	$(PYTHON_VENV_DIR)/bin/primazatest -t $(OPTIONS_FILE) -p $(PYTHON_VENV_DIR) 
+	$(PYTHON_VENV_DIR)/bin/primazatest -t $(OPTIONS_FILE) -p $(PYTHON_VENV_DIR) -v $(VERSION)  -g $(GIT_ORG)
 
 .PHONY: create-users
 create-users: primazactl
@@ -245,20 +286,30 @@ create-users: primazactl
 .PHONY: test
 test: setup-test test-local test-released
 
+.PHONY: clean
+clean:
+ifeq ($(CLEAN),clusters)
+	$(MAKE) delete-clusters
+else
+	$(MAKE) clean-all
+endif
+
 .PHONY: clean-temp
 clean-temp:
 	-chmod 755 $(TEMP_DIR)/bin/k8s/*
-	rm -rf $(TEMP_DIR)
+	-rm -rf $(TEMP_DIR)
 
-.PHONY: clean
-clean: clean-temp
-	rm -rf $(OUTPUT_DIR)
-	rm -rf $(SCRIPTS_DIR)/build
-	rm -rf $(SCRIPTS_DIR)/dist
-	rm -rf $(SCRIPTS_DIR)/src/rh_primaza_control.egg-info
-	rm -rf $(LOCALBIN)
-	-kind delete cluster --name $(KIND_CLUSTER_TENANT_NAME)
-	-kind delete cluster --name $(KIND_CLUSTER_JOIN_NAME)
-
+.PHONY: clean-all
+clean-all: clean-temp delete-clusters
+	-rm -rf $(OUTPUT_DIR)
+	-rm -rf $(SCRIPTS_DIR)/build
+	-rm -rf $(SCRIPTS_DIR)/dist
+	-rm -rf $(SCRIPTS_DIR)/src/rh_primaza_control.egg-info
+	-rm -rf $(LOCALBIN)
 	-docker image rm $(IMG_APP_LOCAL)
 	-docker image rm $(IMG_SVC_LOCAL)
+
+.PHONY: delete-clusters
+delete-clusters:
+	-kind delete cluster --name $(KIND_CLUSTER_TENANT_NAME)
+	-kind delete cluster --name $(KIND_CLUSTER_JOIN_NAME)

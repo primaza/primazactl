@@ -4,6 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [ main ]
+  repository_dispatch:
+    types: [primazactl-test]
+
+env:
+  GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
 
 jobs:
   build:
@@ -13,7 +18,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-            go-version: "^1.19"
+            go-version: "^1.20"
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -27,6 +32,20 @@ jobs:
       - name: Lint python
         run: make lint
 
+      - name: Set Version and Images
+        id: sets-version
+        run: |
+          # set version based on job type
+          if [[ "${{github.event_name}}" == "repository_dispatch" ]]; then
+            primaza_version=${{ github.event.client_payload.version }}
+            echo "GIT_ORG=${{ github.event.client_payload.organization }}" >> $GITHUB_ENV
+            echo "RUN_FROM=release" >> $GITHUB_ENV
+            echo "VERSION=$primaza_version" >> $GITHUB_ENV
+          else
+            echo "RUN_FROM=config" >> $GITHUB_ENV
+            echo "VERSION=latest" >> $GITHUB_ENV
+          fi  
+
       - name: run dry-run
         run: make test-dry-run
 
@@ -34,12 +53,33 @@ jobs:
         run: make test-local-no-setup
 
       - name: run test with users
+        env:
+          CLEAN: clusters
         run: make test-users
 
       - name: run test with output
+        env:
+          CLEAN: clusters
         run: make test-output
 
       - name: run apply command
+        env:
+          CLEAN: clusters
         run: make test-apply
 
+      - name: run test version
+        if: ${{ env.VERSION == 'nightly' }}
+        env:
+          RUN_FROM: release
+          CLEAN: clusters
+        run: make test-version
 
+      - name: trigger release
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          repository: ${{ github.repository_owner }}/primazactl
+          event-type: primazactl-release
+          client-payload: '{"version": "${{ env.VERSION }}",
+                            "organization": "${{ env.GIT_ORG }}"}'
